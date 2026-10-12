@@ -323,7 +323,7 @@ def test_legal_bounded_source_volume_remains_checkpointable(tmp_path):
         assert c.observe_committed_event(event)
         assert c.apply_semantic_observation(observation(event, sequence=index + 1, context=context))
     assert sum(len(e.text.encode()) for e in c.state.events.values()) <= 256 * 1024
-    assert len(c.state.candidates) <= 32
+    assert c.state.candidates
     store = SnapshotStore(tmp_path / "controller.sqlite3")
     try:
         store.save(c.state, expected_revision=0)

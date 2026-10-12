@@ -20,16 +20,6 @@ class SemanticObserver(Protocol):
     async def evaluate(self, snapshot: Snapshot) -> Observation: ...
 
 
-class InputTooLarge(ValueError):
-    """Local material limitation, not a failed provider request or a semantic judgment."""
-
-    def __init__(self, snapshot: Snapshot, request_bytes: int, limit_bytes: int) -> None:
-        super().__init__("semantic_input_too_large")
-        self.snapshot = snapshot
-        self.request_bytes = request_bytes
-        self.limit_bytes = limit_bytes
-
-
 class JevObserver:
     def __init__(
         self,
@@ -37,15 +27,11 @@ class JevObserver:
         *,
         model: str = "jev-1.13.0",
         client: httpx.AsyncClient | None = None,
-        max_request_bytes: int = 16000,
     ) -> None:
         if not api_key.strip() or model in {"jev-latest", "latest"}:
             raise ValueError("semantic_provider_requires_key_and_pinned_model")
-        if max_request_bytes < 1:
-            raise ValueError("max_request_bytes_must_be_positive")
         self._key = api_key
         self.model = model
-        self.max_request_bytes = max_request_bytes
         self._owned = client is None
         self._client = client or httpx.AsyncClient(timeout=12)
 
@@ -139,41 +125,7 @@ class JevObserver:
             ]
         return state
 
-    def prepare_snapshot(self, snapshot: Snapshot) -> Snapshot:
-        """Bound the entire UTF-8 request, not estimated tokens.
-
-        16,000 bytes is an experimental engineering ceiling. Remove only whole optional
-        events, oldest first. Focus and its supplied reply anchor are never shortened.
-        API usage remains the authority for actual token measurements.
-        """
-        prepared = snapshot
-        while True:
-            size = len(self._encode_request(prepared))
-            if size <= self.max_request_bytes:
-                return prepared
-            required = {
-                ref
-                for ref in (
-                    prepared.focus.reply_to,
-                    *(option.self_anchor for option in prepared.focus.unit_options),
-                )
-                if ref is not None
-            }
-            removable = next(
-                (index for index, e in enumerate(prepared.context) if e.ref not in required),
-                None,
-            )
-            if removable is None:
-                raise InputTooLarge(prepared, size, self.max_request_bytes)
-            prepared = prepared.model_copy(
-                update={
-                    "context": prepared.context[:removable] + prepared.context[removable + 1 :],
-                    "omitted_context": prepared.omitted_context + 1,
-                }
-            )
-
     async def evaluate(self, snapshot: Snapshot) -> Observation:
-        snapshot = self.prepare_snapshot(snapshot)
         rubric = questions(
             seed=snapshot.kind != CandidateKind.CONVERSATION,
             unit_options=snapshot.focus.unit_options if snapshot.focus.unit_ambiguous else (),

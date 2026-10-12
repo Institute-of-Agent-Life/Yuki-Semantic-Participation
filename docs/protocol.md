@@ -22,13 +22,13 @@ Host 可以对包含机器人称呼的焦点标记 `observation_priority`，使�
 明确邀请的合格观测可由 Host 提升为普通 USER_MESSAGE；非请求式候选按当前状态的连续机会率采样，
 不等待积累门槛。采样只控制新自主 Work 的机会，不限制已接纳 Work 内的消息条数。
 Host 对新的 proposal 仍执行来源、
-停止边界、同会话占用、代际、权限和 Main Agent 接纳检查。
+停止边界、代际、权限和 Main Agent 接纳检查。已有 Work 的执行容量由 Host 原调度处理。
 
 Jev 请求采用紧凑语义投影：中性局部引用、原文、作者角色、讨论与对象关系、引用关系、相对时间和省略说明。
 scope、generation、revision、sequence 等本地管理字段留在原 Snapshot 中校验，不发送给模型。
-小快照保留完整焦点和已提供的引用锚点，最多六条上下文；超界先整条去除非关键 context。
-实际 UTF-8 请求默认上限 16,000 字节，仍超界记本地 `input_too_large`，不计 Provider 故障，
-不无限重评同一材料。字节不是 token，token 只记录 Provider usage。
+快照保留完整焦点、Host 提供的上下文与引用锚点；DTO 不按字符串或条目数量截断，
+适配器不叠加实验字节上限或裁剪输入。实际 Provider 容量错误沿原请求失败返回，
+字节不是 token，token 只记录 Provider usage。
 
 interaction、information、floor 是新资格所需的必需维度；缺失或非法时保留诊断并计健康失败。
 合法 unknown 不计失败；若交际行为和楼层均明确表示邀请 Yuki，信息新旧或旧讨论归属 unknown 不单独否决邀请。其余缺乏明确交际行为或楼层的 unknown 不生成资格或停止边界；软状态仍按完整概率分布更新。
@@ -53,12 +53,13 @@ Host canonical 入库、来源版本与授权检查
 ```
 
 `host_available` 是宿主当前的接纳事实，不由 Jev 决定。Proposal 不是发送授权。
-Host 再核验 scope/generation、owner/epoch、来源版本与可见性、全部支持、Space、Presence 和已有 Work 占用。
+Host 再核验 scope/generation、owner/epoch、来源版本与可见性、真实停止、Space 和 Presence。
+支持是 Controller 解释机会的资料，不是 Main Agent 的工具许可或第二次评分门槛。
 `pending` 只保留尚未得到 Host 回答的 proposal；收到真实接纳反馈后让出该槽。
 已接纳 run 的执行、等待和恢复由 Host 的原 Work 与持久回执管理，控制器保留其反馈与来源关联，
 不以一个未清空的接纳槽阻止后续合法机会。
 慢观测不占全局接纳锁；原子写事务不等待 Jev、主模型、网关，也不扫描历史。
-同一 proposal 和已消费来源由持久记录防重，busy 不冒充已消费。
+同一 proposal 由原持久记录返回同 run；Host 不把其它 proposal 曾考虑过的来源当作接纳禁令。
 
 `include_addressed` 默认 True 兼容旧调用；当前 Host 设 False，已观察的真人邀请不再同时产生
 新 SELF 入场。它只过滤候选，不删除原观察或忙碌后待处理的来源。旧 pending 先以原 proposal ID

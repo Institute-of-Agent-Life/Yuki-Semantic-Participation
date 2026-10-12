@@ -177,7 +177,7 @@ async def test_required_and_optional_dimension_failures_differ(missing, failures
 
 
 @pytest.mark.asyncio
-async def test_local_oversize_does_not_retry_or_poison_health_and_survives_restart():
+async def test_large_source_uses_real_provider_failure_and_health():
     calls = []
 
     def handler(request):
@@ -190,32 +190,24 @@ async def test_local_oversize_does_not_retry_or_poison_health_and_survives_resta
         oversized = event().model_copy(update={"text": "文" * 6000})
         queue_observation(session, oversized)
         assert not await session.evaluate_due(108, active=True)
-        assert not session.queue.pending
-        assert session.health.failures == 0
-        assert not calls
-        assert session.local_rejections[-1]["reason"] == "input_too_large"
-        assert session.local_rejections[-1]["required_request_bytes"] > 16000
-        queue_observation(session, oversized)
-        assert not await session.evaluate_due(110, active=True)
-        assert len(session.local_rejections) == 1
+        assert session.queue.pending
+        assert session.health.failures == 1
+        assert len(calls) == 1
+        assert len(calls[0].content) > 16000
         restored = ObservationSession(Controller.restore(session.controller.state, 110), observer)
-        assert not restored.queue.pending
-        assert restored.local_rejections == session.local_rejections
-        # The local rejection did not start the HTTP minimum interval.
-        queue_observation(restored, event("small", at=101))
+        assert restored.queue.pending
+        assert restored.health.failures == 1
         assert not await restored.evaluate_due(110, active=True)
         assert len(calls) == 1
-        assert restored.health.failures == 1  # This actual 429 alone is a provider failure.
 
 
 @pytest.mark.asyncio
-async def test_preparation_cannot_replace_focus():
+async def test_observer_cannot_replace_the_submitted_snapshot():
     class WrongPreparation:
-        def prepare_snapshot(self, snapshot):
-            return snapshot.model_copy(update={"focus": event("forged")})
-
         async def evaluate(self, snapshot):
-            pytest.fail("adapter swapped the canonical focus")
+            return observation(snapshot.focus).model_copy(
+                update={"snapshot": snapshot.model_copy(update={"focus": event("forged")})}
+            )
 
     session = ObservationSession(controller(), WrongPreparation())
     queue_observation(session, event())
@@ -261,7 +253,6 @@ async def test_provider_health_survives_expiry_and_restart_until_real_unknown():
         ("queue", []),
         ("retry_after", "invalid"),
         ("last_error", {}),
-        ("local_rejections", [1]),
         ("health", {"failures": "invalid"}),
     ],
 )

@@ -27,10 +27,10 @@ class SourceRef(Record):
 
 
 class HostUnitOption(Record):
-    key: str = Field(min_length=1, max_length=64)
-    thread: str = Field(min_length=1, max_length=128)
-    target: str = Field(min_length=1, max_length=128)
-    label: str = Field(default="", max_length=200)
+    key: str = Field(min_length=1)
+    thread: str = Field(min_length=1)
+    target: str = Field(min_length=1)
+    label: str = ""
     self_anchor: SourceRef | None = None
 
 
@@ -40,12 +40,12 @@ class ScopedEvent(Record):
     thread: str = Field(min_length=1)
     author: str = Field(min_length=1)
     target: str = Field(min_length=1)
-    text: str = Field(max_length=12000)
+    text: str
     at: Timestamp
     kind: Literal["human", "self", "seed"] = "human"
     reply_to: SourceRef | None = None
     unit_ambiguous: bool = False
-    unit_options: tuple[HostUnitOption, ...] = Field(default=(), max_length=16)
+    unit_options: tuple[HostUnitOption, ...] = ()
     observation_priority: bool = False
 
     @model_validator(mode="after")
@@ -84,7 +84,7 @@ class Choice(Record):
 class Snapshot(Record):
     scope: Scope
     focus: ScopedEvent
-    context: tuple[ScopedEvent, ...] = Field(max_length=6)
+    context: tuple[ScopedEvent, ...]
     sequence: int = Field(ge=1)
     issued_at: Timestamp
     kind: CandidateKind = CandidateKind.CONVERSATION
@@ -149,19 +149,19 @@ class Proposal(Record):
     thread: str
     target_hint: str
     sources: tuple[SourceRef, ...]
-    support: Support | None
+    support: Support | None = None
     created_at: Timestamp
     expires_at: Timestamp
-    supports: tuple[Support, ...] = Field(default=(), max_length=32)
-    source_fingerprints: tuple[str, ...] = Field(default=(), max_length=32)
+    supports: tuple[Support, ...] = ()
+    source_fingerprints: tuple[str, ...] = ()
 
     @model_validator(mode="after")
     def valid_cause(self) -> Proposal:
         if self.kind is CandidateKind.INTRINSIC:
             if self.sources or self.support is not None or self.supports:
                 raise ValueError("intrinsic_proposal_has_no_semantic_source")
-        elif not self.sources or self.support is None:
-            raise ValueError("semantic_proposal_requires_source_and_support")
+        elif not self.sources:
+            raise ValueError("semantic_proposal_requires_source")
         return self
 
 

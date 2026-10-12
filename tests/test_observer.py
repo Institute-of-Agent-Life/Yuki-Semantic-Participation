@@ -3,7 +3,7 @@ import pytest
 from test_controller import SCOPE, event
 
 from yuki_participation.models import Snapshot
-from yuki_participation.observer import InputTooLarge, JevObserver
+from yuki_participation.observer import JevObserver
 from yuki_participation.rubric import CRITERIA
 from yuki_participation.scheduling import ObservationQueue, ProviderHealth
 
@@ -185,7 +185,7 @@ async def test_malformed_usage_is_protocol_error_not_unhandled_attribute_error()
 
 
 @pytest.mark.asyncio
-async def test_full_request_byte_ceiling_preserves_focus_and_reply_anchor():
+async def test_full_request_preserves_focus_context_and_reply_anchor():
     import json
 
     seen = []
@@ -223,9 +223,8 @@ async def test_full_request_byte_ceiling_preserves_focus_and_reply_anchor():
         result = await observer.evaluate(snapshot)
     assert result.snapshot.focus == focus
     assert anchor in result.snapshot.context
-    assert result.snapshot.omitted_context == len(snapshot.context) - len(result.snapshot.context)
-    assert result.snapshot.omitted_context > 0
-    assert result.request_bytes == len(seen[0]) <= 16000
+    assert result.snapshot == snapshot
+    assert result.request_bytes == len(seen[0]) > 16000
     assert result.input_tokens == 432  # Provider measurement, never derived from byte count.
     state = json.loads(seen[0])["state"]
     assert state["focus"]["text"] == focus.text
@@ -236,21 +235,24 @@ async def test_full_request_byte_ceiling_preserves_focus_and_reply_anchor():
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("large_anchor", [False, True])
-async def test_oversized_focus_or_required_anchor_is_rejected_locally(large_anchor):
-    def forbidden(request):
-        pytest.fail("oversized required evidence must not reach HTTP")
+async def test_large_focus_or_anchor_reaches_the_real_provider_capacity(large_anchor):
+    calls = []
+
+    def reject(request):
+        calls.append(request)
+        return httpx.Response(413)
 
     source = event().model_copy(update={"text": "文" * 6000})
     focus = event("focus", at=101, reply_to=source.ref) if large_anchor else source
     context = (source,) if large_anchor else ()
     snapshot = Snapshot(scope=SCOPE, focus=focus, context=context, issued_at=101, sequence=1)
-    async with httpx.AsyncClient(transport=httpx.MockTransport(forbidden)) as client:
+    async with httpx.AsyncClient(transport=httpx.MockTransport(reject)) as client:
         observer = JevObserver("synthetic-key", client=client)
-        with pytest.raises(InputTooLarge) as raised:
+        with pytest.raises(httpx.HTTPStatusError) as raised:
             await observer.evaluate(snapshot)
-    assert raised.value.snapshot.focus == focus
-    assert raised.value.request_bytes > raised.value.limit_bytes
-    assert raised.value.snapshot.context == context
+    assert raised.value.response.status_code == 413
+    assert len(calls) == 1
+    assert len(calls[0].content) > 16000
 
 
 def test_semantic_projection_keeps_relationships_without_internal_or_label_ids():
