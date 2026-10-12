@@ -8,8 +8,16 @@ from test_core_review_regressions import choice, controller, feedback, observati
 
 from yuki_participation import dynamics
 from yuki_participation.controller import Controller
-from yuki_participation.models import CandidateKind, Choice, Effect, HostUnitOption, Snapshot
+from yuki_participation.models import (
+    CandidateKind,
+    Choice,
+    Effect,
+    HostUnitOption,
+    Proposal,
+    Snapshot,
+)
 from yuki_participation.observer import JevObserver
+from yuki_participation.participation import ParticipationUnit
 
 
 def score_seed(c, key, at, *, kind=CandidateKind.CONTACT, info="new", text=None):
@@ -24,6 +32,36 @@ def score_seed(c, key, at, *, kind=CandidateKind.CONTACT, info="new", text=None)
     )
     assert c.apply_semantic_observation(score)
     return event
+
+
+def test_host_material_and_opportunity_keep_complete_sources_without_support_gate():
+    scope = source().scope
+    option = HostUnitOption(key="k" * 65, thread="t" * 300, target="p" * 200, label="l" * 400)
+    focus = source().model_copy(
+        update={"text": "完整来源" * 4000, "unit_options": tuple(
+            option.model_copy(update={"key": f"option-{index}"}) for index in range(40)
+        )}
+    )
+    # Parse the wire form so this exercises actual DTO validation, not model_copy alone.
+    focus = type(focus).model_validate(focus.model_dump())
+    context = tuple(source(str(index), at=90) for index in range(40))
+    snapshot = Snapshot(scope=scope, focus=focus, context=context, issued_at=100, sequence=1)
+    assert snapshot.focus.text.endswith("完整来源") and snapshot.context == context
+    proposal = Proposal(
+        proposal_id="proposal" * 100,
+        scope=scope,
+        controller_epoch=0,
+        kind=CandidateKind.CONVERSATION,
+        thread=option.thread,
+        target_hint=option.target,
+        sources=tuple(event.ref for event in context),
+        source_fingerprints=tuple(f"source-{index}" for index in range(40)),
+        created_at=100,
+        expires_at=101,
+    )
+    assert proposal.support is None and proposal.sources == tuple(e.ref for e in context)
+    unit = ParticipationUnit(thread=proposal.thread, target=proposal.target_hint)
+    assert unit.thread == option.thread
 
 
 def prime_recent_group_context(c):

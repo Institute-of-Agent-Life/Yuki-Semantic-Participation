@@ -13,8 +13,8 @@ CHECKPOINT_KEY = "participation_v1"
 
 
 class ParticipationUnit(Record):
-    thread: str = Field(min_length=1, max_length=128)
-    target: str = Field(min_length=1, max_length=128)
+    thread: str = Field(min_length=1)
+    target: str = Field(min_length=1)
 
 
 class UnitBinding(Record):

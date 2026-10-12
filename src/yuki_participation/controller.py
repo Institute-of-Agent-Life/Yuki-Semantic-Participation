@@ -2234,9 +2234,6 @@ class Controller:
                 self.state.events.pop(key)
                 self.state.observations.pop(key, None)
                 self.state.candidates.pop(key, None)
-        while len(self.state.candidates) > 32:
-            key = min(self.state.candidates, key=lambda k: self.state.candidates[k].event.at)
-            self.state.candidates.pop(key)
         boundary_refs = {
             ref.event_id
             for boundary in self.state.boundaries.values()
