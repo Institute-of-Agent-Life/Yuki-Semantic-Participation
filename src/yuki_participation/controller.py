@@ -1478,10 +1478,16 @@ class Controller:
                 )
 
     def _eligible_groups(
-        self, now: float, *, include_addressed: bool = True
+        self,
+        now: float,
+        *,
+        include_addressed: bool = True,
+        allowed_kinds: frozenset[CandidateKind] | None = None,
     ) -> dict[str, list[Candidate]]:
         groups: dict[tuple[CandidateKind, str, str], list[Candidate]] = {}
         for key, candidate in self.state.candidates.items():
+            if allowed_kinds is not None and candidate.kind not in allowed_kinds:
+                continue
             support = candidate.support
             if (
                 support.kind == "predicted"
@@ -1526,12 +1532,20 @@ class Controller:
             for items in groups.values()
         }
 
-    def opportunity_scores(self, now: float, *, include_addressed: bool = True) -> dict[str, float]:
+    def opportunity_scores(
+        self,
+        now: float,
+        *,
+        include_addressed: bool = True,
+        allowed_kinds: frozenset[CandidateKind] | None = None,
+    ) -> dict[str, float]:
         """Rates for legal non-request SELF opportunities; invitations bypass sampling."""
         raw: dict[str, float] = {}
         context = self._social_context(now)
         pressure = self._autonomy_pressure(now)
-        for key, members in self._eligible_groups(now, include_addressed=include_addressed).items():
+        for key, members in self._eligible_groups(
+            now, include_addressed=include_addressed, allowed_kinds=allowed_kinds
+        ).items():
             candidate = self.state.candidates[key]
             tau = {
                 "conversation": self.parameters.conversation_source_decay_seconds,
@@ -1917,6 +1931,7 @@ class Controller:
         host_available: bool,
         intrinsic_allowed: bool = False,
         include_addressed: bool = True,
+        allowed_kinds: frozenset[CandidateKind] | None = None,
     ) -> Proposal | None:
         if not math.isfinite(now) or now < self.state.now:
             raise ValueError("clock_must_be_finite_and_monotonic")
@@ -1933,8 +1948,12 @@ class Controller:
         if not can_propose:
             self._set(last_sample_at=now)
             return None
-        groups = self._eligible_groups(now, include_addressed=include_addressed)
-        scores = self.opportunity_scores(now, include_addressed=include_addressed)
+        groups = self._eligible_groups(
+            now, include_addressed=include_addressed, allowed_kinds=allowed_kinds
+        )
+        scores = self.opportunity_scores(
+            now, include_addressed=include_addressed, allowed_kinds=allowed_kinds
+        )
         addressed = [
             key
             for key, members in groups.items()
