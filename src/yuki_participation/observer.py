@@ -10,10 +10,10 @@ from uuid import uuid4
 import httpx
 from pydantic import ValidationError
 
-from .models import CandidateKind, Choice, Observation, ScopedEvent, Snapshot
+from .models import Choice, Observation, ScopedEvent, Snapshot
 from .rubric import REVISION, questions
 
-PROJECTION_REVISION = "semantic-state-v1"
+PROJECTION_REVISION = "semantic-state-v2"
 
 
 class SemanticObserver(Protocol):
@@ -41,7 +41,6 @@ class JevObserver:
                 "model": self.model,
                 "state": self._semantic_state(snapshot),
                 "questions": questions(
-                    seed=snapshot.kind != CandidateKind.CONVERSATION,
                     unit_options=snapshot.focus.unit_options
                     if snapshot.focus.unit_ambiguous
                     else (),
@@ -123,11 +122,33 @@ class JevObserver:
                 }
                 for option in snapshot.focus.unit_options
             ]
+        if snapshot.projection_revision is not None:
+            state["projection_revision"] = snapshot.projection_revision
+        participation = snapshot.participation
+        if participation is not None:
+            own: dict[str, object] = {}
+            if participation.scope_intent is not None:
+                hint = participation.scope_intent
+                own["scope_intent"] = {
+                    "engage": hint.engage,
+                    "source_seconds_from_focus": round(hint.at - snapshot.focus.at, 3),
+                }
+            if participation.units:
+                own["units"] = [
+                    {
+                        "thread": threads[hint.thread],
+                        "target": hint.target,
+                        "engage": hint.engage,
+                        "source_seconds_from_focus": round(hint.at - snapshot.focus.at, 3),
+                    }
+                    for hint in participation.units
+                ]
+            if own:
+                state["yuki_participation"] = own
         return state
 
     async def evaluate(self, snapshot: Snapshot) -> Observation:
         rubric = questions(
-            seed=snapshot.kind != CandidateKind.CONVERSATION,
             unit_options=snapshot.focus.unit_options if snapshot.focus.unit_ambiguous else (),
         )
         encoded = self._encode_request(snapshot)

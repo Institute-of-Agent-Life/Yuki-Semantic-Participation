@@ -42,11 +42,12 @@ class ScopedEvent(Record):
     target: str = Field(min_length=1)
     text: str
     at: Timestamp
-    kind: Literal["human", "self", "seed"] = "human"
+    kind: Literal["human", "self"] = "human"
     reply_to: SourceRef | None = None
     unit_ambiguous: bool = False
     unit_options: tuple[HostUnitOption, ...] = ()
     observation_priority: bool = False
+    source_order: int | None = Field(default=None, ge=0)
 
     @model_validator(mode="after")
     def valid_options(self) -> ScopedEvent:
@@ -58,6 +59,7 @@ class ScopedEvent(Record):
 
 class CandidateKind(StrEnum):
     CONVERSATION = "conversation"
+    # Historical proposal kinds only. They cannot enter observation or sampling.
     RECALL = "recall"
     CONTACT = "contact"
     INTRINSIC = "intrinsic"
@@ -81,6 +83,36 @@ class Choice(Record):
         return self.probabilities.get(key, 0.0)
 
 
+class EngageIntent(Record):
+    engage: Literal["join", "stay", "quiet"]
+    at: Timestamp
+    run_ref: str
+    sequence: int = Field(ge=1)
+    response_id: str
+    basis: tuple[SourceRef, ...] = ()
+
+
+class UnitIntent(EngageIntent):
+    thread: str
+    target: str
+
+
+class ParticipationContext(Record):
+    scope_intent: EngageIntent | None = None
+    units: tuple[UnitIntent, ...] = ()
+
+
+class UnitReviewSnapshot(Record):
+    """Local original relationship/progress; not a Jev question or authority."""
+
+    thread: str
+    target: str
+    actor: str
+    basis: tuple[SourceRef, ...]
+    fast_sequence: int = Field(ge=0)
+    borrowed: bool = False
+
+
 class Snapshot(Record):
     scope: Scope
     focus: ScopedEvent
@@ -89,6 +121,9 @@ class Snapshot(Record):
     issued_at: Timestamp
     kind: CandidateKind = CandidateKind.CONVERSATION
     omitted_context: int = Field(default=0, ge=0)
+    projection_revision: str | None = None
+    participation: ParticipationContext | None = None
+    unit_reviews: tuple[UnitReviewSnapshot, ...] = ()
 
     @model_validator(mode="after")
     def same_scope(self) -> Snapshot:
@@ -153,7 +188,13 @@ class Proposal(Record):
     created_at: Timestamp
     expires_at: Timestamp
     supports: tuple[Support, ...] = ()
-    source_fingerprints: tuple[str, ...] = ()
+
+    @model_validator(mode="before")
+    @classmethod
+    def retire_fingerprints(cls, value: object) -> object:
+        if isinstance(value, dict) and "source_fingerprints" in value:
+            return {key: item for key, item in value.items() if key != "source_fingerprints"}
+        return value
 
     @model_validator(mode="after")
     def valid_cause(self) -> Proposal:

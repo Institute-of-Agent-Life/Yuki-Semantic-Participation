@@ -4,7 +4,6 @@ import math
 
 import pytest
 from test_core_review_regressions import controller, feedback, observation, source
-from test_v6_completion import score_seed
 
 from yuki_participation.controller import Reception, WorkPulse
 from yuki_participation.models import CandidateKind, Choice, Effect, HostUnitOption
@@ -100,15 +99,6 @@ def test_real_self_speech_does_not_count_as_another_autonomous_work():
     c.advance(2600, controller_epoch=0, host_available=False)
     assert own.ref.event_id not in c.state.events
     assert c._work_density(2600, 1800) == 0
-
-
-def test_memory_seed_alone_does_not_revive_a_long_dormant_group():
-    c = controller()
-    _prime_group(c)
-    c.advance(86400, controller_epoch=0, host_available=False)
-    seed = score_seed(c, "fresh-scan-of-old-memory", 86400, kind=CandidateKind.RECALL)
-    assert seed.ref.event_id in c.state.candidates
-    assert 0 < c.opportunity_scores(86405)[seed.ref.event_id] < 0.0001
 
 
 def test_no_reply_feedback_trace_survives_compaction_and_restore():

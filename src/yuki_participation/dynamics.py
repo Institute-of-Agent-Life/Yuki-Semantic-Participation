@@ -150,7 +150,6 @@ def source_rate(
     context: float,
     tendency: float,
     pressure: float,
-    independent: bool,
     parameters: AutonomyParameters = DEFAULT_AUTONOMY_PARAMETERS,
 ) -> float:
     social = (
@@ -171,7 +170,6 @@ def source_rate(
         * opening
         * context
         * sigmoid(pressure + parameters.source_social_weight * social)
-        * (parameters.independent_source_factor if independent else 1)
     )
 
 

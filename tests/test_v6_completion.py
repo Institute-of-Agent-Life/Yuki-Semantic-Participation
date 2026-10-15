@@ -4,7 +4,7 @@ import math
 
 import httpx
 import pytest
-from test_core_review_regressions import choice, controller, feedback, observation, propose, source
+from test_core_review_regressions import controller, feedback, observation, propose, source
 
 from yuki_participation import dynamics
 from yuki_participation.controller import Controller
@@ -20,27 +20,16 @@ from yuki_participation.observer import JevObserver
 from yuki_participation.participation import ParticipationUnit
 
 
-def score_seed(c, key, at, *, kind=CandidateKind.CONTACT, info="new", text=None):
-    event = source(key, at=at, kind="seed", text=text or f"New evidence: {key}")
-    assert c.observe_committed_event(event)
-    score = observation(event, info=info)
-    score = score.model_copy(
-        update={
-            "snapshot": score.snapshot.model_copy(update={"kind": kind}),
-            "answers": {**score.answers, "seed_fit": choice("seed_fit", "appropriate")},
-        }
-    )
-    assert c.apply_semantic_observation(score)
-    return event
-
-
 def test_host_material_and_opportunity_keep_complete_sources_without_support_gate():
     scope = source().scope
     option = HostUnitOption(key="k" * 65, thread="t" * 300, target="p" * 200, label="l" * 400)
     focus = source().model_copy(
-        update={"text": "完整来源" * 4000, "unit_options": tuple(
-            option.model_copy(update={"key": f"option-{index}"}) for index in range(40)
-        )}
+        update={
+            "text": "完整来源" * 4000,
+            "unit_options": tuple(
+                option.model_copy(update={"key": f"option-{index}"}) for index in range(40)
+            ),
+        }
     )
     # Parse the wire form so this exercises actual DTO validation, not model_copy alone.
     focus = type(focus).model_validate(focus.model_dump())
@@ -55,7 +44,6 @@ def test_host_material_and_opportunity_keep_complete_sources_without_support_gat
         thread=option.thread,
         target_hint=option.target,
         sources=tuple(event.ref for event in context),
-        source_fingerprints=tuple(f"source-{index}" for index in range(40)),
         created_at=100,
         expires_at=101,
     )
@@ -64,20 +52,7 @@ def test_host_material_and_opportunity_keep_complete_sources_without_support_gat
     assert unit.thread == option.thread
 
 
-def prime_recent_group_context(c):
-    for index in range(30):
-        assert c.observe_committed_event(source(f"context-{index}", at=70 + index))
-
-
-def admit_seed(c, at=105):
-    # These tests exercise source/feedback behavior, not the stochastic arrival clock.
-    c._sample = lambda _sequence, _stream: 0.0
-    proposal = c.advance(at, controller_epoch=0, host_available=True)
-    assert proposal is not None
-    return proposal
-
-
-def test_repeated_human_turn_is_distinct_but_repeated_seed_is_deduplicated():
+def test_repeated_human_turn_remains_a_distinct_real_source():
     c = controller()
     original = source("first", text="Yuki，来看看")
     assert c.observe_committed_event(original)
@@ -92,11 +67,6 @@ def test_repeated_human_turn_is_distinct_but_repeated_seed_is_deduplicated():
     )
     restored = Controller.restore(c.state, 106)
     assert restored.observe_committed_event(source("later", at=106, text=original.text))
-    first_seed = source("seed-one", at=107, kind="seed", text="相同记忆内容")
-    assert restored.observe_committed_event(first_seed)
-    assert not restored.observe_committed_event(
-        source("seed-two", at=108, kind="seed", text=first_seed.text)
-    )
 
 
 def test_common_unit_sources_compete_once_and_are_consumed_together():
@@ -141,44 +111,18 @@ def test_message_count_does_not_create_extra_autonomous_work():
     assert c._work_density(800, 1800) == pytest.approx(math.exp(-695 / 1800))
 
 
-@pytest.mark.parametrize("kind", [CandidateKind.CONTACT, CandidateKind.RECALL])
-def test_unanswered_seed_requires_substantial_new_reason_or_observed_response(kind):
+def test_accepted_conversation_updates_bounded_familiarity_across_restart():
     c = controller()
-    prime_recent_group_context(c)
-    original = score_seed(c, "seed", 100, kind=kind)
-    proposal = admit_seed(c)
-    c.observe_run_feedback(
-        feedback(
-            proposal,
-            outcome="completed",
-            effects=(Effect(effect_id="contact", kind="message", at=105, actual_targets=("A",)),),
-        )
-    )
-    assert not c.observe_committed_event(
-        source("same-reason", at=106, kind="seed", text=original.text)
-    )
-    minor = score_seed(c, "minor-refinement", 107, kind=kind, info="refine")
-    assert minor.ref.event_id not in c.state.candidates
-    new = score_seed(c, "substantial-new-reason", 108, kind=kind, info="new")
-    assert new.ref.event_id in c.state.candidates
-    reply = source("real-response", at=109)
-    c.observe_committed_event(reply)
-    c.apply_semantic_observation(observation(reply, act="invite_yuki"))
-    subsequent = score_seed(c, "now-appropriate-refinement", 110, kind=kind, info="refine")
-    assert subsequent.ref.event_id in c.state.candidates
-
-
-def test_accepted_seed_updates_bounded_familiarity_across_restart():
-    c = controller()
-    prime_recent_group_context(c)
-    score_seed(c, "seed", 100)
-    assert c._familiarity(CandidateKind.CONTACT, "topic", "A", 105) == 0
-    proposal = admit_seed(c)
+    e = source("human", at=100)
+    assert c.observe_committed_event(e)
+    assert c.apply_semantic_observation(observation(e))
+    assert c._familiarity(CandidateKind.CONVERSATION, "topic", "A", 105) == 0
+    proposal = c.advance(105, controller_epoch=0, host_available=True)
     assert c.observe_run_feedback(feedback(proposal, outcome="accepted", at=105))
-    assert c._familiarity(CandidateKind.CONTACT, "topic", "A", 105) == pytest.approx(0.45)
+    assert c._familiarity(CandidateKind.CONVERSATION, "topic", "A", 105) == pytest.approx(0.45)
     restored = Controller.restore(c.state, 705)
-    assert restored._familiarity(CandidateKind.CONTACT, "topic", "A", 705) == pytest.approx(
-        0.45 * math.exp(-600 / 21600)
+    assert restored._familiarity(CandidateKind.CONVERSATION, "topic", "A", 705) == pytest.approx(
+        0.45 * math.exp(-600 / 600)
     )
 
 
@@ -204,13 +148,17 @@ def test_explicit_stop_reopens_only_for_same_actor_with_strong_scoped_invitation
 
 def test_late_send_receipt_recognizes_already_observed_response_after_restart():
     c = controller()
-    prime_recent_group_context(c)
-    score_seed(c, "contact", 100)
-    proposal = admit_seed(c)
+    e = source("human", at=100)
+    assert c.observe_committed_event(e)
+    assert c.apply_semantic_observation(observation(e))
+    proposal = c.advance(105, controller_epoch=0, host_available=True)
     assert c.observe_run_feedback(feedback(proposal))
-    reply = source("reply", at=110)
+    anchor = source("actual-outbound", at=106, kind="self", target="group")
+    assert c.observe_committed_event(anchor)
+    assert c.observe_public_anchor("run", anchor.ref.event_id, 106)
+    reply = source("reply", at=110, reply_to=anchor.ref)
     assert c.observe_committed_event(reply)
-    assert c.apply_semantic_observation(observation(reply))
+    assert c.apply_semantic_observation(observation(reply, act="extend_yuki", context=(anchor,)))
     c = Controller.restore(c.state, 111)
     assert c.observe_run_feedback(
         feedback(
@@ -221,10 +169,8 @@ def test_late_send_receipt_recognizes_already_observed_response_after_restart():
             effects=(Effect(effect_id="sent", kind="message", at=106, actual_targets=("A",)),),
         )
     )
-    attempt = c.state.seed_attempts[c._unit_key("topic", "A")]
-    assert attempt.response == reply.ref
-    seed = score_seed(c, "refinement-after-response", 112, info="refine")
-    assert seed.ref.event_id in c.state.candidates
+    assert c.state.work_pulses["run"].public_at == 106
+    assert c.state.receptions[reply.ref.event_id].run_ref == "run"
 
 
 def test_withdrawing_latest_reopening_keeps_another_valid_invitation():
@@ -240,27 +186,6 @@ def test_withdrawing_latest_reopening_keeps_another_valid_invitation():
     c.observe_source_change(second.ref)
     assert c.state.boundaries[stop.ref.event_id].released_by == first.ref
     assert not c._closed(first)
-
-
-def test_late_seed_feedback_claims_proposed_content_not_new_revision():
-    c = controller()
-    prime_recent_group_context(c)
-    original = score_seed(c, "seed", 100)
-    original_fingerprint = c.state.content_keys[original.ref.event_id]
-    proposal = admit_seed(c)
-    revised = original.model_copy(
-        update={
-            "ref": original.ref.model_copy(update={"revision": 2}),
-            "at": 106,
-            "text": "Substantially new evidence",
-        }
-    )
-    assert c.observe_committed_event(revised)
-    revised_fingerprint = c.state.content_keys[original.ref.event_id]
-    assert revised_fingerprint != original_fingerprint
-    assert c.observe_run_feedback(feedback(proposal, outcome="completed", at=107))
-    assert original_fingerprint in c.state.seed_claims
-    assert revised_fingerprint not in c.state.seed_claims
 
 
 def test_ambiguous_unit_accepts_only_host_offered_combination():

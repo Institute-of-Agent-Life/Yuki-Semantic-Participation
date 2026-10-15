@@ -1,5 +1,8 @@
 # 群聊合成负载与验收边界
 
+本文保留早期合成负载与当时回放事实；现行种子退役、意愿投影和有限快路见[宿主协议](protocol.md)与[当前模型](autonomous-evolution.md)。
+旧报告数字不作为当前源码或线上效果预测。
+
 ## 输入来源
 
 `fixtures/group-chat-workload-v2-full.json.gz` 是两条各 30 天的合成轨迹。

@@ -16,25 +16,32 @@ from .models import (
     CandidateKind,
     Choice,
     Effect,
+    EngageIntent,
     Estimate,
     Feedback,
     HostUnitOption,
     Observation,
+    ParticipationContext,
     Proposal,
     Record,
     Scope,
     ScopedEvent,
+    Snapshot,
     SourceRef,
     Support,
+    UnitIntent,
+    UnitReviewSnapshot,
 )
 from .participation import (
     CHECKPOINT_KEY,
     ExpressionBinding,
+    FastInput,
     ParticipationCheckpoint,
     ParticipationUnit,
     ParticipationView,
     UnitBinding,
     UnitParticipation,
+    UnitSemanticReview,
     UnitState,
 )
 from .rubric import CRITERIA, REVISION
@@ -73,21 +80,10 @@ class Boundary(Record):
     release_dependencies: tuple[SourceRef, ...] = ()
 
 
-class SeedAttempt(Record):
-    run_ref: str
-    proposal_id: str
-    thread: str
-    target: str
-    kind: CandidateKind
-    fingerprints: tuple[str, ...]
-    at: float
-    sent_at: float | None = None
-    response: SourceRef | None = None
-
-
 class SeenSource(Record):
     revision: int
     at: float
+    source_order: int | None = Field(default=None, ge=0)
 
 
 class RecordedEffect(Record):
@@ -207,9 +203,6 @@ class State(Record):
     baseline_invalidations: int = Field(default=0, ge=0)
     trace_baselines: dict[str, TraceBaseline] = Field(default_factory=dict)
     familiarities: dict[str, TraceBaseline] = Field(default_factory=dict)
-    content_keys: dict[str, str] = Field(default_factory=dict)
-    seed_claims: dict[str, float] = Field(default_factory=dict)
-    seed_attempts: dict[str, SeedAttempt] = Field(default_factory=dict)
     work_pulses: dict[str, WorkPulse] = Field(default_factory=dict)
     outbound_anchors: dict[str, OutboundAnchor] = Field(default_factory=dict)
     receptions: dict[str, Reception] = Field(default_factory=dict)
@@ -230,8 +223,64 @@ class State(Record):
             "last_intrinsic_at",
             "self_reference_at",
             "last_intrinsic_accepted_at",
+            "content_keys",
+            "seed_claims",
+            "seed_attempts",
         }
         migrated = {key: item for key, item in value.items() if key not in obsolete}
+        events = migrated.get("events", {})
+        if isinstance(events, dict):
+            seeds = {
+                key: event
+                for key, event in events.items()
+                if isinstance(event, dict) and event.get("kind") == "seed"
+            }
+            migrated["events"] = {key: event for key, event in events.items() if key not in seeds}
+            # Keep source identity required by old admitted units, never seed text.
+            seen = dict(migrated.get("seen", {}))
+            for key, event in seeds.items():
+                seen.setdefault(key, {"revision": event["ref"]["revision"], "at": event["at"]})
+            migrated["seen"] = seen
+            observations = migrated.get("observations", {})
+            if isinstance(observations, dict):
+                migrated["observations"] = {
+                    key: observation
+                    for key, observation in observations.items()
+                    if key not in seeds
+                }
+            host = dict(migrated.get("host_checkpoint", {}))
+            host.pop("seed_cursor", None)
+            host.pop("seed_versions", None)
+            if isinstance(raw := host.get(CHECKPOINT_KEY), dict) and raw.get("version") == 1:
+                units = {}
+                for key, original in raw.get("units", {}).items():
+                    unit = dict(original)
+                    if isinstance(hint := unit.get("hint"), dict):
+                        if isinstance(delta := hint.get("delta"), dict):
+                            unit["hint"] = {
+                                **hint,
+                                "delta": {
+                                    name: item for name, item in delta.items() if name != "mood"
+                                },
+                            }
+                    refs = (*unit["binding"]["basis"], *unit.get("hint_basis", ()))
+                    retired = list(unit.get("retired_refs", ()))
+                    for ref in refs:
+                        old = seeds.get(ref["event_id"])
+                        if old is not None and old["ref"] == ref and ref not in retired:
+                            retired.append(ref)
+                    unit["retired_refs"] = retired
+                    units[key] = unit
+                host[CHECKPOINT_KEY] = {**raw, "units": units}
+            migrated["host_checkpoint"] = host
+        candidates = migrated.get("candidates", {})
+        if isinstance(candidates, dict):
+            migrated["candidates"] = {
+                key: candidate
+                for key, candidate in candidates.items()
+                if not isinstance(candidate, dict)
+                or candidate.get("kind") == CandidateKind.CONVERSATION
+            }
         if isinstance(traces := migrated.get("trace_baselines"), dict):
             migrated["trace_baselines"] = {
                 key: item
@@ -293,21 +342,6 @@ class Controller:
     def _set(self, **updates: object) -> None:
         self.state = self.state.model_copy(update=updates)
 
-    @staticmethod
-    def _content_key(event: ScopedEvent) -> str:
-        payload = [
-            event.thread,
-            event.target,
-            event.author,
-            event.kind,
-            event.text,
-            event.reply_to.model_dump() if event.reply_to else None,
-            [option.model_dump() for option in event.unit_options],
-        ]
-        return hashlib.sha256(
-            json.dumps(payload, ensure_ascii=False, sort_keys=True).encode()
-        ).hexdigest()
-
     def _resolved_event(self, event: ScopedEvent) -> ScopedEvent:
         observation = self.state.observations.get(event.ref.event_id)
         unit = observation.resolved_unit if observation else None
@@ -334,32 +368,35 @@ class Controller:
         ):
             return False
         seen = self.state.seen.get(event.ref.event_id)
+        old = self.state.events.get(event.ref.event_id)
         if seen and seen.revision >= event.ref.revision:
+            if (
+                seen.revision == event.ref.revision
+                and seen.source_order is None
+                and event.source_order is not None
+                and old is not None
+                and old.model_copy(update={"source_order": event.source_order}) == event
+            ):
+                # A Host reread can supply the original local order of an old
+                # source. Keep paid events and snapshots byte-for-byte stable.
+                self.state.seen[event.ref.event_id] = seen.model_copy(
+                    update={"source_order": event.source_order}
+                )
             return False
         if seen is None and len(self.state.seen) >= 1024:
             self._make_participation_source_room()
             if len(self.state.seen) >= 1024:
                 return False
-        old = self.state.events.get(event.ref.event_id)
         if old and old.ref.revision >= event.ref.revision:
             return False
         if event.ref.revision <= self.state.invalidated.get(event.ref.event_id, 0):
             return False
         if old:
             self.observe_source_change(old.ref)
-        content_key = self._content_key(event)
-        duplicate = event.kind == "seed" and any(
-            key != event.ref.event_id and value == content_key
-            for key, value in self.state.content_keys.items()
-        )
-        self.state.content_keys[event.ref.event_id] = content_key
-        if duplicate:
-            self.state.seen[event.ref.event_id] = SeenSource(
-                revision=event.ref.revision, at=event.at
-            )
-            return False
         self.state.events[event.ref.event_id] = event
-        self.state.seen[event.ref.event_id] = SeenSource(revision=event.ref.revision, at=event.at)
+        self.state.seen[event.ref.event_id] = SeenSource(
+            revision=event.ref.revision, at=event.at, source_order=event.source_order
+        )
         if event.kind == "human":
             self._set(last_human_at=max(self.state.last_human_at or 0, event.at))
         elif event.kind == "self":
@@ -401,6 +438,7 @@ class Controller:
         self.state.seen[key] = SeenSource(
             revision=max(invalid.revision, old_seen.revision if old_seen else 0),
             at=old_seen.at if old_seen else self.state.now,
+            source_order=old_seen.source_order if old_seen else None,
         )
         self.state.invalidated[key] = max(invalid.revision, self.state.invalidated.get(key, 0))
         current = self.state.events.get(key)
@@ -421,15 +459,6 @@ class Controller:
             ):
                 self.state.boundaries[boundary_key] = boundary.model_copy(
                     update={"released_by": None, "release_dependencies": ()}
-                )
-        for attempt_key, attempt in list(self.state.seed_attempts.items()):
-            if (
-                attempt.response
-                and attempt.response.event_id == key
-                and attempt.response.revision <= invalid.revision
-            ):
-                self.state.seed_attempts[attempt_key] = attempt.model_copy(
-                    update={"response": None}
                 )
         for observation_key, observation in list(self.state.observations.items()):
             sources = (observation.snapshot.focus, *observation.snapshot.context)
@@ -457,11 +486,6 @@ class Controller:
                 self.state.boundaries[boundary_key] = boundary.model_copy(
                     update={"released_by": None, "release_dependencies": ()}
                 )
-        for attempt_key, attempt in list(self.state.seed_attempts.items()):
-            if attempt.response and attempt.response.event_id == key:
-                self.state.seed_attempts[attempt_key] = attempt.model_copy(
-                    update={"response": None}
-                )
         observation = self.state.observations.pop(key, None)
         self.state.receptions.pop(key, None)
         if observation is None:
@@ -480,8 +504,12 @@ class Controller:
             and ref.revision > self.state.invalidated.get(ref.event_id, 0)
         )
 
+    def _source_order(self, ref: SourceRef) -> int | None:
+        seen = self.state.seen.get(ref.event_id)
+        return seen.source_order if seen is not None and seen.revision == ref.revision else None
+
     def apply_semantic_observation(self, observation: Observation) -> bool:
-        if observation.snapshot.kind is CandidateKind.INTRINSIC:
+        if observation.snapshot.kind is not CandidateKind.CONVERSATION:
             return False
         snap = observation.snapshot
         event = snap.focus
@@ -589,6 +617,7 @@ class Controller:
                 else ("observer" if observation.resolved_unit is not None else None),
             },
         )
+        self._record_unit_reviews(observation, event)
         self._record_reception(key, self.state.observations[key])
         self.state.candidates.pop(key, None)
         self.state.boundaries.pop(key, None)
@@ -611,7 +640,6 @@ class Controller:
                 author=event.author,
                 explicit_stop=act.p("ask_yuki_stop") >= 0.5,
             )
-        self._refresh_seed_responses()
         self._refresh_releases()
         if self.state.consumed.get(key, 0) >= event.ref.revision:
             return True
@@ -625,21 +653,6 @@ class Controller:
             return True
         if act.p("invite_yuki") + act.p("extend_yuki") >= 0.5 and floor.p("other") >= 0.5:
             return True  # conflicting dimensions, no multiplied confidence
-        if snap.kind != CandidateKind.CONVERSATION:
-            fit = observation.answers.get("seed_fit")
-            if not _dimension_known(fit) or fit.p("appropriate") < 0.5:
-                return True
-            fingerprint = self.state.content_keys.get(key, self._content_key(event))
-            if fingerprint in self.state.seed_claims:
-                return True
-            attempt = self.state.seed_attempts.get(self._unit_key(event.thread, event.target))
-            if (
-                attempt
-                and attempt.sent_at is not None
-                and attempt.response is None
-                and (info is None or info.p("new") < 0.5)
-            ):
-                return True
         value = 0.5 * (act.p("invite_yuki") + act.p("extend_yuki") + 0.6 * act.p("open_group"))
         if _dimension_known(info):
             value += 0.5 * (info.p("new") + 0.8 * info.p("refine"))
@@ -708,7 +721,7 @@ class Controller:
             record = self.state.effects.get(effect_id)
             if (
                 unit is not None
-                and self._same_unit_actor(unit.binding, association.binding)
+                and self._bound_to_unit(association.binding, unit)
                 and record is not None
                 and record.effect.kind == "message"
             ):
@@ -724,6 +737,8 @@ class Controller:
                 *((unit.input_ref,) if unit.input_ref else ()),
                 *unit.hint_basis,
                 *unit.anchors,
+                *(unit.review.basis if unit.review else ()),
+                *(item.source for item in (unit.fast_inputs or ())),
             )
         }
         for effect_id in self._unit_expression_ids(checkpoint):
@@ -740,7 +755,6 @@ class Controller:
         return bool(
             seen
             and seen.revision == ref.revision
-            and seen.at <= self.state.replay_after
             and ref.revision > self.state.invalidated.get(ref.event_id, 0)
             and ref in known
         )
@@ -792,12 +806,15 @@ class Controller:
         return left.scope == right.scope and left.unit == right.unit and left.actor == right.actor
 
     @classmethod
-    def _unit_binding(cls, old: UnitState | None, binding: UnitBinding) -> UnitBinding:
-        # The unit keeps its establishment sources; each hint/effect has its own binding.
-        return old.binding if old and cls._same_unit_actor(old.binding, binding) else binding
+    def _bound_to_unit(cls, binding: UnitBinding, unit: UnitState) -> bool:
+        return cls._same_unit_actor(binding, unit.binding) and all(
+            ref in binding.basis for ref in unit.binding.basis
+        )
 
-    def observe_unit_input(self, binding: UnitBinding, event_ref: SourceRef) -> bool:
-        """Host confirms ordinary admission, independently of semantic observation."""
+    def observe_unit_input(
+        self, binding: UnitBinding, event_ref: SourceRef, *, continuation: bool | None = False
+    ) -> bool:
+        """Replay one real admission; only its original continuation fact spends review span."""
         event = self.state.events.get(event_ref.event_id)
         if (
             not self._participation_writable()
@@ -812,19 +829,57 @@ class Controller:
         checkpoint = self._participation_checkpoint()
         key = self._unit_key(binding.unit.thread, binding.unit.target)
         old = checkpoint.units.get(key)
+        if old is not None and not self._same_unit_actor(old.binding, binding):
+            old = None
         if old is not None and old.input_ref == event_ref:
             return self._same_unit_actor(old.binding, binding)
-        checkpoint.units[key] = UnitState(
-            binding=self._unit_binding(old, binding),
-            last_at=max(event.at, old.last_at if old else 0),
-            input_ref=event_ref,
-            hint=old.hint if old else None,
-            hint_basis=old.hint_basis if old else (),
-            anchors=old.anchors if old else (),
-            retired_refs=old.retired_refs
-            if old and self._same_unit_actor(old.binding, binding)
-            else (),
-        )
+        consumed = self.state.consumed.get(event_ref.event_id, 0) >= event_ref.revision
+        if old is None and consumed:
+            # An old replay cannot re-establish a relationship retired by its source.
+            return False
+        progress = old.fast_sequence if old else 0
+        inputs = old.fast_inputs if old else (() if continuation is not None else None)
+        if continuation and not consumed:
+            progress += 1
+            inputs = (
+                (
+                    *inputs,
+                    FastInput(
+                        source=event_ref,
+                        at=event.at,
+                        sequence=progress,
+                        source_order=self._source_order(event_ref),
+                    ),
+                )
+                if inputs is not None
+                else None
+            )
+        changes: dict[str, object] = {
+            "last_at": max(event.at, old.last_at if old else 0),
+            "fast_sequence": progress,
+            "fast_inputs": inputs,
+        }
+        # A/B/C hydration is a replay, not permission to rewind the latest input.
+        previous = self.state.seen.get(old.input_ref.event_id) if old and old.input_ref else None
+        event_order = self._source_order(event_ref)
+        if (
+            previous is None
+            or event.at > previous.at
+            or (
+                event.at == previous.at
+                and (
+                    event_order is not None
+                    and previous.source_order is not None
+                    and event_order >= previous.source_order
+                )
+            )
+        ):
+            changes["input_ref"] = event_ref
+        unit = old or UnitState(binding=binding, last_at=event.at, fast_inputs=())
+        if continuation is False and not consumed:
+            # An independent admission owns its new source, but cannot erase quiet.
+            changes.update(binding=binding, review=None, fast_inputs=(), fast_sequence=0)
+        checkpoint.units[key] = unit.model_copy(update=changes)
         self.state.consumed[event_ref.event_id] = max(
             event_ref.revision, self.state.consumed.get(event_ref.event_id, 0)
         )
@@ -869,7 +924,7 @@ class Controller:
                 unit = checkpoint.units.get(key)
                 if (
                     unit is not None
-                    and self._same_unit_actor(unit.binding, binding)
+                    and self._bound_to_unit(binding, unit)
                     and anchor not in unit.anchors
                 ):
                     checkpoint.units[key] = unit.model_copy(
@@ -885,7 +940,7 @@ class Controller:
         checkpoint.expressions[effect.effect_id] = association
         key = self._unit_key(binding.unit.thread, binding.unit.target)
         unit = checkpoint.units.get(key)
-        if unit is None or not self._same_unit_actor(unit.binding, binding):
+        if unit is None or not self._bound_to_unit(binding, unit):
             # A late transport receipt remains factual, but cannot re-establish a
             # unit retired by a real interpretation change or resource eviction.
             self._save_participation(checkpoint)
@@ -893,16 +948,8 @@ class Controller:
         anchors = tuple(
             dict.fromkeys((*(unit.anchors if unit else ()), *((anchor,) if anchor else ())))
         )
-        checkpoint.units[key] = UnitState(
-            binding=self._unit_binding(unit, binding),
-            last_at=max(effect.at, unit.last_at if unit else 0),
-            input_ref=unit.input_ref if unit else None,
-            hint=unit.hint if unit else None,
-            hint_basis=unit.hint_basis if unit else (),
-            anchors=anchors,
-            retired_refs=unit.retired_refs
-            if unit and self._same_unit_actor(unit.binding, binding)
-            else (),
+        checkpoint.units[key] = unit.model_copy(
+            update={"last_at": max(effect.at, unit.last_at), "anchors": anchors}
         )
         self._save_participation(checkpoint)
         self._prune_participation()
@@ -919,30 +966,62 @@ class Controller:
         checkpoint = self._participation_checkpoint()
         key = self._unit_key(binding.unit.thread, binding.unit.target)
         old = checkpoint.units.get(key)
-        if old is None or not self._same_unit_actor(old.binding, binding):
+        if old is None or not self._bound_to_unit(binding, old):
             return False
-        if old and old.hint:
+        if report.source is None:
+            source_ref = self._hint_source(report, binding.basis)
+            if source_ref is not None:
+                report = report.model_copy(update={"source": source_ref})
+        if report.source is not None:
+            source = self.state.seen.get(report.source.event_id)
+            if (
+                report.source not in binding.basis
+                or source is None
+                or source.revision != report.source.revision
+                or source.at != report.at
+            ):
+                return False
+        if old.hint:
             previous = old.hint
+            previous_source = self._hint_source(previous, old.hint_basis)
+            order = self._source_order(report.source) if report.source else None
+            previous_order = self._source_order(previous_source) if previous_source else None
             if (
                 report.response_id == previous.response_id
                 or report.at < previous.at
+                or (
+                    report.at == previous.at
+                    and order is not None
+                    and previous_order is not None
+                    and order < previous_order
+                )
                 or (report.run_ref == previous.run_ref and report.sequence <= previous.sequence)
             ):
                 return False
-        checkpoint.units[key] = UnitState(
-            binding=self._unit_binding(old, binding),
-            last_at=max(report.at, old.last_at if old else 0),
-            input_ref=old.input_ref if old else None,
-            hint=report,
-            hint_basis=binding.basis,
-            anchors=old.anchors if old else (),
-            retired_refs=old.retired_refs
-            if old and self._same_unit_actor(old.binding, binding)
-            else (),
+        checkpoint.units[key] = old.model_copy(
+            update={
+                "last_at": max(report.at, old.last_at),
+                "hint": report,
+                "hint_basis": binding.basis,
+            }
         )
         self._save_participation(checkpoint)
         self._prune_participation()
         return True
+
+    def _hint_source(self, report: SelfReport, basis: tuple[SourceRef, ...]) -> SourceRef | None:
+        if report.source is not None:
+            return report.source
+        # Old reports did not carry a source. Only a unique original basis
+        # source at their real source time can recover that association.
+        sources = tuple(
+            ref
+            for ref in basis
+            if (seen := self.state.seen.get(ref.event_id)) is not None
+            and seen.revision == ref.revision
+            and seen.at == report.at
+        )
+        return sources[0] if len(sources) == 1 else None
 
     def _prune_participation(self) -> None:
         if not self._participation_writable():
@@ -959,6 +1038,9 @@ class Controller:
                     "anchors": tuple(r for r in v.anchors if self._unit_ref_valid(r, v)),
                     "hint": v.hint
                     if all(self._unit_ref_valid(r, v) for r in v.hint_basis)
+                    else None,
+                    "fast_inputs": v.fast_inputs
+                    if v.review is None or all(self._unit_ref_valid(r, v) for r in v.review.basis)
                     else None,
                 }
             )
@@ -1006,6 +1088,8 @@ class Controller:
                 *((unit.input_ref,) if unit.input_ref else ()),
                 *unit.hint_basis,
                 *anchors,
+                *(unit.review.basis if unit.review else ()),
+                *(item.source for item in (unit.fast_inputs or ())),
             }
             for effect_id in expressions:
                 association = checkpoint.expressions[effect_id]
@@ -1018,7 +1102,7 @@ class Controller:
                         for r in refs
                         if self._unit_ref_valid(r, unit)
                         and (seen := self.state.seen.get(r.event_id)) is not None
-                        and seen.at <= boundary
+                        and (r in unit.retired_refs or seen.at <= boundary)
                     ),
                     key=lambda r: (r.event_id, r.revision),
                 )
@@ -1055,6 +1139,13 @@ class Controller:
             self._unit_key(v.binding.unit.thread, v.binding.unit.target)
             for effect_id, v in checkpoint.expressions.items()
             if self._binding_valid(v.binding)
+            and (
+                bound_unit := units.get(
+                    self._unit_key(v.binding.unit.thread, v.binding.unit.target)
+                )
+            )
+            is not None
+            and self._bound_to_unit(v.binding, bound_unit)
             and (record := self.state.effects.get(effect_id)) is not None
             and record.effect.kind == "message"
             and record.effect.at <= now
@@ -1083,6 +1174,7 @@ class Controller:
                     ),
                     last_at=record.effect.at,
                     anchors=anchors,
+                    fast_inputs=(),
                 )
         return tuple(
             UnitParticipation(
@@ -1095,6 +1187,8 @@ class Controller:
                 else None,
                 expressed=self._unit_key(v.binding.unit.thread, v.binding.unit.target) in expressed,
                 closed=self._unit_closed(v.binding.unit),
+                unconfirmed_inputs=self._unconfirmed_inputs(v),
+                semantic_continuation=self._semantic_continuation(v),
             )
             for v in sorted(units.values(), key=lambda v: (-v.last_at, v.binding.unit.thread))
             if v.last_at <= now
@@ -1106,19 +1200,13 @@ class Controller:
             return True
         if not self._unit_ref_valid(ref, unit):
             return False
-        if ref.event_id not in self.state.observations:
-            return True
-        event = self.state.events.get(ref.event_id)
-        if event is None or event.ref != ref:
-            return False
-        resolved = self._resolved_event(event)
-        return (
-            not resolved.unit_ambiguous
-            and resolved.thread == unit.binding.unit.thread
-            and resolved.target == unit.binding.unit.target
-        )
+        # Interpretations qualify continuation, not the existence of real inputs,
+        # own quiet reports or transport receipts. Keep those independent facts.
+        return True
 
-    def participation_view(self, event: ScopedEvent, now: float) -> ParticipationView:
+    def participation_view(
+        self, event: ScopedEvent, now: float, *, check_budget: bool = True
+    ) -> ParticipationView:
         """Relationship candidates are distinct from the focus's observed resolution."""
         valid = event.scope == self.state.scope and self._valid(event.ref)
         if not valid:
@@ -1143,6 +1231,18 @@ class Controller:
         explicit = tuple(u for u in personal if event.reply_to and event.reply_to in u.anchors)
         matches = explicit or personal
         matches = tuple(u for u in matches if u.engage != "quiet")
+        matches = tuple(
+            u
+            for u in matches
+            if u.semantic_continuation
+            and (
+                not check_budget
+                or (
+                    u.unconfirmed_inputs is not None
+                    and u.unconfirmed_inputs < self.parameters.continuation_review_span
+                )
+            )
+        )
         if current_resolved:
             matches = tuple(u for u in matches if u.unit.thread == resolved.thread)
         matched = matches[0] if len(matches) == 1 else None
@@ -1174,7 +1274,244 @@ class Controller:
             matched_unit=matched,
             candidates=candidates,
             ambiguous=len(matches) > 1,
-            needs_observation=not current_resolved and matched is None,
+            needs_observation=not current_resolved,
+        )
+
+    def continuation_current(
+        self,
+        event_ref: SourceRef,
+        binding: UnitBinding,
+        now: float,
+        *,
+        check_budget: bool = True,
+    ) -> bool:
+        """Recheck an unadmitted opportunity at the original Host boundary; no I/O."""
+        event = self.state.events.get(event_ref.event_id)
+        if (
+            event is None
+            or event.ref != event_ref
+            or binding.actor != event.author
+            or not self._binding_valid(binding)
+        ):
+            return False
+        matched = self.participation_view(event, now, check_budget=check_budget).matched_unit
+        return (
+            matched is not None
+            and matched.binding.scope == binding.scope
+            and matched.unit == binding.unit
+        )
+
+    @staticmethod
+    def _review_verdict(review: UnitSemanticReview, unit: ParticipationUnit) -> bool | None:
+        if review.resolved_unit is not None and review.resolved_unit != unit:
+            return False
+        act, floor = review.interaction, review.floor
+        if _dimension_known(act) and act.choice in {
+            "other_exchange",
+            "off_focus",
+            "close_topic",
+            "ask_yuki_stop",
+        }:
+            return False
+        if _dimension_known(act) and _dimension_known(floor):
+            if floor.choice == "other":
+                return False
+            if (
+                act.choice in {"invite_yuki", "extend_yuki"}
+                and floor.choice == "yuki"
+                and review.resolved_unit == unit
+            ):
+                return True
+        return None
+
+    def _unconfirmed_inputs(self, unit: UnitState) -> int | None:
+        if unit.fast_inputs is None:
+            return None
+        review = unit.review
+        if review is None or self._review_verdict(review, unit.binding.unit) is not True:
+            return len(unit.fast_inputs)
+        review_order = self._source_order(review.source)
+        return sum(
+            item.source != review.source
+            and not (
+                item.sequence <= review.covered_fast_sequence
+                and (
+                    item.at < review.at
+                    or (
+                        item.at == review.at
+                        and (item_order := self._source_order(item.source)) is not None
+                        and review_order is not None
+                        and item_order <= review_order
+                    )
+                )
+            )
+            for item in unit.fast_inputs
+        )
+
+    def _semantic_continuation(self, unit: UnitState) -> bool:
+        review = unit.review
+        return review is None or (
+            all(self._unit_ref_valid(ref, unit) for ref in review.basis)
+            and self._review_verdict(review, unit.binding.unit) is True
+        )
+
+    def _record_unit_reviews(self, observation: Observation, event: ScopedEvent) -> None:
+        """Attach a real result to its original borrowed relationship, in source order."""
+        if not self._participation_writable():
+            return
+        checkpoint = self._participation_checkpoint()
+        frozen = {
+            self._unit_key(item.thread, item.target): item
+            for item in observation.snapshot.unit_reviews
+        }
+        for key, unit in tuple(checkpoint.units.items()):
+            origin = frozen.get(key)
+            original_input = unit.input_ref == event.ref or any(
+                item.source == event.ref for item in (unit.fast_inputs or ())
+            )
+            resolved = (
+                ParticipationUnit(thread=event.thread, target=event.target)
+                if not event.unit_ambiguous
+                else None
+            )
+            if origin is not None and (
+                origin.actor != unit.binding.actor or origin.basis != unit.binding.basis
+            ):
+                continue
+            if origin is None and not original_input and resolved != unit.binding.unit:
+                continue
+            if unit.binding.actor != event.author:
+                continue
+            review = UnitSemanticReview(
+                source=event.ref,
+                at=event.at,
+                sequence=observation.snapshot.sequence,
+                observation_id=observation.observation_id,
+                basis=tuple(
+                    dict.fromkeys((event.ref, *(e.ref for e in observation.snapshot.context)))
+                ),
+                resolved_unit=resolved,
+                interaction=observation.answers.get("interaction_mark"),
+                floor=observation.answers.get("floor_state"),
+                source_order=self._source_order(event.ref),
+                covered_fast_sequence=origin.fast_sequence
+                if origin is not None
+                else unit.fast_sequence,
+            )
+            verdict = self._review_verdict(review, unit.binding.unit)
+            if verdict is None:
+                continue
+            if verdict is False and not original_input and (origin is None or not origin.borrowed):
+                continue
+            previous = unit.review
+            if previous is not None:
+                if review.at < previous.at:
+                    continue
+                if review.at == previous.at:
+                    previous_order = self._source_order(previous.source)
+                    if review.source == previous.source:
+                        if review.sequence <= previous.sequence:
+                            continue
+                    elif review.source_order is not None and previous_order is not None:
+                        if review.source_order < previous_order:
+                            continue
+                    else:
+                        positions = {
+                            item.source: item.sequence for item in (unit.fast_inputs or ())
+                        }
+                        if (
+                            review.source not in positions
+                            or previous.source not in positions
+                            or positions[review.source] <= positions[previous.source]
+                        ):
+                            continue
+            changes: dict[str, object] = {"review": review}
+            if verdict and unit.fast_inputs is None:
+                changes["fast_inputs"] = ()
+            checkpoint.units[key] = unit.model_copy(update=changes)
+        self._save_participation(checkpoint)
+
+    def freeze_observation(self, snapshot: Snapshot) -> Snapshot:
+        """Freeze existing intent and original review positions once, before HTTP."""
+        checkpoint = self._participation_checkpoint()
+        focus = snapshot.focus
+        keys = {(focus.thread, focus.target)} | {
+            (option.thread, option.target) for option in focus.unit_options
+        }
+        units = []
+        reviews = []
+        matched = self.participation_view(
+            focus, snapshot.issued_at, check_budget=False
+        ).matched_unit
+        for unit in checkpoint.units.values():
+            if not self._binding_valid(unit.binding) or not self._unit_interpretation_valid(unit):
+                continue
+            hint = unit.hint
+            if (
+                (unit.binding.unit.thread, unit.binding.unit.target) in keys
+                and hint is not None
+                and hint.delta.engage is not None
+                and hint.at <= snapshot.issued_at
+                and all(self._unit_ref_valid(ref, unit) for ref in unit.hint_basis)
+            ):
+                units.append(
+                    UnitIntent(
+                        thread=unit.binding.unit.thread,
+                        target=unit.binding.unit.target,
+                        engage=hint.delta.engage,
+                        at=hint.at,
+                        run_ref=hint.run_ref,
+                        sequence=hint.sequence,
+                        response_id=hint.response_id,
+                        basis=unit.hint_basis,
+                    )
+                )
+            if (
+                unit.input_ref == focus.ref
+                or any(item.source == focus.ref for item in (unit.fast_inputs or ()))
+                or (matched is not None and self._same_unit_actor(matched.binding, unit.binding))
+                or (
+                    (unit.binding.unit.thread, unit.binding.unit.target) in keys
+                    and unit.binding.actor == focus.author
+                )
+            ):
+                reviews.append(
+                    UnitReviewSnapshot(
+                        thread=unit.binding.unit.thread,
+                        target=unit.binding.unit.target,
+                        actor=unit.binding.actor,
+                        basis=unit.binding.basis,
+                        fast_sequence=unit.fast_sequence,
+                        borrowed=unit.input_ref == focus.ref
+                        or any(item.source == focus.ref for item in (unit.fast_inputs or ()))
+                        or (
+                            matched is not None
+                            and self._same_unit_actor(matched.binding, unit.binding)
+                        ),
+                    )
+                )
+        report = self.state.engagement_report
+        scope_intent = (
+            EngageIntent(
+                engage=report.delta.engage,
+                at=report.at,
+                run_ref=report.run_ref,
+                sequence=report.sequence,
+                response_id=report.response_id,
+            )
+            if report is not None
+            and report.delta.engage is not None
+            and report.at <= snapshot.issued_at
+            else None
+        )
+        return snapshot.model_copy(
+            update={
+                "projection_revision": "semantic-state-v2",
+                "participation": ParticipationContext(
+                    scope_intent=scope_intent, units=tuple(units)
+                ),
+                "unit_reviews": tuple(reviews),
+            }
         )
 
     @staticmethod
@@ -1448,40 +1785,19 @@ class Controller:
                     }
                 )
 
-    def _refresh_seed_responses(self) -> None:
-        """Observe replies by event time, even when the send receipt arrives late."""
-        for attempt_key, attempt in list(self.state.seed_attempts.items()):
-            if attempt.sent_at is None:
-                continue
-            replies = []
-            for observation in self.state.observations.values():
-                raw = self.state.events.get(observation.snapshot.focus.event_id)
-                if raw is None:
-                    continue
-                event = self._resolved_event(raw)
-                act = observation.answers.get("interaction_mark")
-                if (
-                    event.kind == "human"
-                    and not event.unit_ambiguous
-                    and event.at > attempt.sent_at
-                    and event.thread == attempt.thread
-                    and event.target == attempt.target
-                    and event.author == attempt.target
-                    and _dimension_known(act)
-                    and act.p("invite_yuki") + act.p("extend_yuki") >= 0.5
-                ):
-                    replies.append(event)
-            if replies:
-                response = max(replies, key=lambda event: (event.at, event.ref.event_id))
-                self.state.seed_attempts[attempt_key] = attempt.model_copy(
-                    update={"response": response.ref}
-                )
-
     def _eligible_groups(
-        self, now: float, *, include_addressed: bool = True
+        self,
+        now: float,
+        *,
+        include_addressed: bool = True,
+        allowed_kinds: frozenset[CandidateKind] | None = None,
     ) -> dict[str, list[Candidate]]:
         groups: dict[tuple[CandidateKind, str, str], list[Candidate]] = {}
         for key, candidate in self.state.candidates.items():
+            if candidate.kind is not CandidateKind.CONVERSATION or (
+                allowed_kinds is not None and candidate.kind not in allowed_kinds
+            ):
+                continue
             support = candidate.support
             if (
                 support.kind == "predicted"
@@ -1501,24 +1817,6 @@ class Controller:
                 or self.state.consumed.get(key, 0) >= candidate.event.ref.revision
             ):
                 continue
-            if candidate.kind != CandidateKind.CONVERSATION:
-                unit_key = self._unit_key(candidate.event.thread, candidate.event.target)
-                if len(self.state.seed_claims) >= 1024 or (
-                    len(self.state.seed_attempts) >= 64 and unit_key not in self.state.seed_attempts
-                ):
-                    continue
-                fingerprint = self.state.content_keys.get(key)
-                attempt = self.state.seed_attempts.get(unit_key)
-                info = self.state.observations[support.basis.event_id].answers.get(
-                    "information_state"
-                )
-                if fingerprint in self.state.seed_claims or (
-                    attempt
-                    and attempt.sent_at is not None
-                    and attempt.response is None
-                    and (info is None or info.p("new") < 0.5)
-                ):
-                    continue
             unit = (candidate.kind, candidate.event.thread, candidate.event.target)
             groups.setdefault(unit, []).append(candidate)
         return {
@@ -1526,18 +1824,22 @@ class Controller:
             for items in groups.values()
         }
 
-    def opportunity_scores(self, now: float, *, include_addressed: bool = True) -> dict[str, float]:
+    def opportunity_scores(
+        self,
+        now: float,
+        *,
+        include_addressed: bool = True,
+        allowed_kinds: frozenset[CandidateKind] | None = None,
+    ) -> dict[str, float]:
         """Rates for legal non-request SELF opportunities; invitations bypass sampling."""
         raw: dict[str, float] = {}
         context = self._social_context(now)
         pressure = self._autonomy_pressure(now)
-        for key, members in self._eligible_groups(now, include_addressed=include_addressed).items():
+        for key, members in self._eligible_groups(
+            now, include_addressed=include_addressed, allowed_kinds=allowed_kinds
+        ).items():
             candidate = self.state.candidates[key]
-            tau = {
-                "conversation": self.parameters.conversation_source_decay_seconds,
-                "recall": self.parameters.recall_source_decay_seconds,
-                "contact": self.parameters.contact_source_decay_seconds,
-            }[candidate.kind.value]
+            tau = self.parameters.conversation_source_decay_seconds
             for member in members:
                 self.state.attentions[member.event.ref.event_id] = dynamics.source_attention(
                     member.value.value,
@@ -1590,7 +1892,6 @@ class Controller:
                 ),
                 tendency=self._willingness(now),
                 pressure=pressure,
-                independent=candidate.kind != CandidateKind.CONVERSATION,
                 parameters=self.parameters,
             )
         return raw
@@ -1917,6 +2218,7 @@ class Controller:
         host_available: bool,
         intrinsic_allowed: bool = False,
         include_addressed: bool = True,
+        allowed_kinds: frozenset[CandidateKind] | None = None,
     ) -> Proposal | None:
         if not math.isfinite(now) or now < self.state.now:
             raise ValueError("clock_must_be_finite_and_monotonic")
@@ -1933,8 +2235,12 @@ class Controller:
         if not can_propose:
             self._set(last_sample_at=now)
             return None
-        groups = self._eligible_groups(now, include_addressed=include_addressed)
-        scores = self.opportunity_scores(now, include_addressed=include_addressed)
+        groups = self._eligible_groups(
+            now, include_addressed=include_addressed, allowed_kinds=allowed_kinds
+        )
+        scores = self.opportunity_scores(
+            now, include_addressed=include_addressed, allowed_kinds=allowed_kinds
+        )
         addressed = [
             key
             for key, members in groups.items()
@@ -1992,9 +2298,6 @@ class Controller:
                 sources=tuple(member.event.ref for member in members),
                 support=candidate.support,
                 supports=tuple(member.support for member in members),
-                source_fingerprints=tuple(
-                    self.state.content_keys[member.event.ref.event_id] for member in members
-                ),
                 created_at=now,
                 expires_at=min(member.support.valid_until for member in members),
             )
@@ -2107,44 +2410,6 @@ class Controller:
                 self._set(last_accepted=max(self.state.last_accepted, feedback.at))
                 if proposal.kind != CandidateKind.INTRINSIC:
                     self._consider(proposal, feedback.at)
-            if proposal.kind in {CandidateKind.RECALL, CandidateKind.CONTACT}:
-                unit = self._unit_key(proposal.thread, proposal.target_hint)
-                fingerprints = proposal.source_fingerprints
-                for fingerprint in fingerprints:
-                    if fingerprint:
-                        self.state.seed_claims[fingerprint] = feedback.at
-                attempt = self.state.seed_attempts.get(unit)
-                if (
-                    attempt is None
-                    or attempt.run_ref == feedback.run_ref
-                    or proposal.created_at > attempt.at
-                ):
-                    sent = [
-                        effect.at
-                        for effect in incoming_effects.values()
-                        if effect.kind == "message"
-                        and proposal.target_hint in effect.actual_targets
-                    ]
-                    self.state.seed_attempts[unit] = SeedAttempt(
-                        run_ref=feedback.run_ref,
-                        proposal_id=proposal.proposal_id,
-                        thread=proposal.thread,
-                        target=proposal.target_hint,
-                        kind=proposal.kind,
-                        fingerprints=fingerprints,
-                        at=proposal.created_at,
-                        sent_at=max(sent)
-                        if sent
-                        else (
-                            attempt.sent_at
-                            if attempt and attempt.run_ref == feedback.run_ref
-                            else None
-                        ),
-                        response=attempt.response
-                        if attempt and attempt.run_ref == feedback.run_ref
-                        else None,
-                    )
-        self._refresh_seed_responses()
         # Pending owns only an unanswered proposal. The Host's durable Work and
         # execution lease own accepted work, including waits and later resumes.
         if self.state.pending == proposal.proposal_id:
@@ -2251,7 +2516,6 @@ class Controller:
                 and key not in participation_refs
             ):
                 self.state.seen.pop(key)
-                self.state.content_keys.pop(key, None)
         for mapping in (self.state.consumed, self.state.invalidated):
             for key in list(mapping):
                 if key not in self.state.seen and key not in self.state.boundaries:
@@ -2303,7 +2567,7 @@ class Controller:
             )
             # Old snapshots retained accepted proposals in this slot. Their real
             # acceptance feedback already transferred ownership to the Host.
-            if accepted or proposal.expires_at <= self.state.now:
+            if accepted:
                 self._set(pending=None)
         self._prune_participation()
 

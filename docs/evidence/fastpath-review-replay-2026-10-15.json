@@ -1,0 +1,5388 @@
+{
+  "evidence": "synthetic offline controller/queue timing; not model accuracy or Main latency",
+  "tick_seconds": 2,
+  "queue_profile_boundary": "fixed active/inactive comparisons, not live Host mode switching",
+  "input_duration_seconds": 90,
+  "drain_seconds": 22,
+  "observation_horizon_seconds": 112,
+  "main_execution_and_semantic_promotion": "not simulated",
+  "timeout_boundary": "real ObservationSession timeout/backoff plus spent-span regression in tests/test_seed_retirement_fastpath.py; unknown is not timeout",
+  "rows": [
+    {
+      "fixed_active_queue": true,
+      "queue_seconds": [
+        2,
+        8,
+        15
+      ],
+      "span": 2,
+      "message_gap_seconds": 1,
+      "observer_elapsed_seconds": 6.002977,
+      "mode": "positive",
+      "input_count": 90,
+      "fast_admitted": 12,
+      "needs_semantic_path": 78,
+      "first_semantic_path_at_seconds": 2,
+      "post_topic_change_fast_admitted": 0,
+      "simulated_observations": 14,
+      "completed_observations": 13,
+      "positive_foci": 13,
+      "queue_expired": 13,
+      "queue_dropped": 15,
+      "observed_focus_delay_seconds": {
+        "min": 10.0,
+        "max": 17.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": true,
+      "queue_seconds": [
+        2,
+        8,
+        15
+      ],
+      "span": 3,
+      "message_gap_seconds": 1,
+      "observer_elapsed_seconds": 6.002977,
+      "mode": "positive",
+      "input_count": 90,
+      "fast_admitted": 18,
+      "needs_semantic_path": 72,
+      "first_semantic_path_at_seconds": 3,
+      "post_topic_change_fast_admitted": 0,
+      "simulated_observations": 14,
+      "completed_observations": 13,
+      "positive_foci": 13,
+      "queue_expired": 13,
+      "queue_dropped": 15,
+      "observed_focus_delay_seconds": {
+        "min": 10.0,
+        "max": 17.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": true,
+      "queue_seconds": [
+        2,
+        8,
+        15
+      ],
+      "span": 4,
+      "message_gap_seconds": 1,
+      "observer_elapsed_seconds": 6.002977,
+      "mode": "positive",
+      "input_count": 90,
+      "fast_admitted": 24,
+      "needs_semantic_path": 66,
+      "first_semantic_path_at_seconds": 4,
+      "post_topic_change_fast_admitted": 0,
+      "simulated_observations": 14,
+      "completed_observations": 13,
+      "positive_foci": 13,
+      "queue_expired": 13,
+      "queue_dropped": 15,
+      "observed_focus_delay_seconds": {
+        "min": 10.0,
+        "max": 17.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": true,
+      "queue_seconds": [
+        2,
+        8,
+        15
+      ],
+      "span": 6,
+      "message_gap_seconds": 1,
+      "observer_elapsed_seconds": 6.002977,
+      "mode": "positive",
+      "input_count": 90,
+      "fast_admitted": 36,
+      "needs_semantic_path": 54,
+      "first_semantic_path_at_seconds": 6,
+      "post_topic_change_fast_admitted": 0,
+      "simulated_observations": 14,
+      "completed_observations": 13,
+      "positive_foci": 13,
+      "queue_expired": 13,
+      "queue_dropped": 15,
+      "observed_focus_delay_seconds": {
+        "min": 10.0,
+        "max": 17.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": true,
+      "queue_seconds": [
+        2,
+        8,
+        15
+      ],
+      "span": 2,
+      "message_gap_seconds": 3,
+      "observer_elapsed_seconds": 6.002977,
+      "mode": "positive",
+      "input_count": 30,
+      "fast_admitted": 12,
+      "needs_semantic_path": 18,
+      "first_semantic_path_at_seconds": 6,
+      "post_topic_change_fast_admitted": 0,
+      "simulated_observations": 14,
+      "completed_observations": 13,
+      "positive_foci": 13,
+      "queue_expired": 6,
+      "queue_dropped": 0,
+      "observed_focus_delay_seconds": {
+        "min": 10.0,
+        "max": 22.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": true,
+      "queue_seconds": [
+        2,
+        8,
+        15
+      ],
+      "span": 3,
+      "message_gap_seconds": 3,
+      "observer_elapsed_seconds": 6.002977,
+      "mode": "positive",
+      "input_count": 30,
+      "fast_admitted": 18,
+      "needs_semantic_path": 12,
+      "first_semantic_path_at_seconds": 9,
+      "post_topic_change_fast_admitted": 0,
+      "simulated_observations": 14,
+      "completed_observations": 13,
+      "positive_foci": 13,
+      "queue_expired": 6,
+      "queue_dropped": 0,
+      "observed_focus_delay_seconds": {
+        "min": 10.0,
+        "max": 22.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": true,
+      "queue_seconds": [
+        2,
+        8,
+        15
+      ],
+      "span": 4,
+      "message_gap_seconds": 3,
+      "observer_elapsed_seconds": 6.002977,
+      "mode": "positive",
+      "input_count": 30,
+      "fast_admitted": 23,
+      "needs_semantic_path": 7,
+      "first_semantic_path_at_seconds": 15,
+      "post_topic_change_fast_admitted": 0,
+      "simulated_observations": 14,
+      "completed_observations": 13,
+      "positive_foci": 13,
+      "queue_expired": 6,
+      "queue_dropped": 0,
+      "observed_focus_delay_seconds": {
+        "min": 10.0,
+        "max": 22.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": true,
+      "queue_seconds": [
+        2,
+        8,
+        15
+      ],
+      "span": 6,
+      "message_gap_seconds": 3,
+      "observer_elapsed_seconds": 6.002977,
+      "mode": "positive",
+      "input_count": 30,
+      "fast_admitted": 30,
+      "needs_semantic_path": 0,
+      "first_semantic_path_at_seconds": null,
+      "post_topic_change_fast_admitted": 0,
+      "simulated_observations": 14,
+      "completed_observations": 13,
+      "positive_foci": 13,
+      "queue_expired": 6,
+      "queue_dropped": 0,
+      "observed_focus_delay_seconds": {
+        "min": 10.0,
+        "max": 22.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": true,
+      "queue_seconds": [
+        2,
+        8,
+        15
+      ],
+      "span": 2,
+      "message_gap_seconds": 5,
+      "observer_elapsed_seconds": 6.002977,
+      "mode": "positive",
+      "input_count": 18,
+      "fast_admitted": 12,
+      "needs_semantic_path": 6,
+      "first_semantic_path_at_seconds": 10,
+      "post_topic_change_fast_admitted": 0,
+      "simulated_observations": 14,
+      "completed_observations": 13,
+      "positive_foci": 13,
+      "queue_expired": 2,
+      "queue_dropped": 0,
+      "observed_focus_delay_seconds": {
+        "min": 10.0,
+        "max": 31.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": true,
+      "queue_seconds": [
+        2,
+        8,
+        15
+      ],
+      "span": 3,
+      "message_gap_seconds": 5,
+      "observer_elapsed_seconds": 6.002977,
+      "mode": "positive",
+      "input_count": 18,
+      "fast_admitted": 15,
+      "needs_semantic_path": 3,
+      "first_semantic_path_at_seconds": 25,
+      "post_topic_change_fast_admitted": 0,
+      "simulated_observations": 14,
+      "completed_observations": 13,
+      "positive_foci": 13,
+      "queue_expired": 2,
+      "queue_dropped": 0,
+      "observed_focus_delay_seconds": {
+        "min": 10.0,
+        "max": 31.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": true,
+      "queue_seconds": [
+        2,
+        8,
+        15
+      ],
+      "span": 4,
+      "message_gap_seconds": 5,
+      "observer_elapsed_seconds": 6.002977,
+      "mode": "positive",
+      "input_count": 18,
+      "fast_admitted": 18,
+      "needs_semantic_path": 0,
+      "first_semantic_path_at_seconds": null,
+      "post_topic_change_fast_admitted": 0,
+      "simulated_observations": 14,
+      "completed_observations": 13,
+      "positive_foci": 13,
+      "queue_expired": 2,
+      "queue_dropped": 0,
+      "observed_focus_delay_seconds": {
+        "min": 10.0,
+        "max": 31.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": true,
+      "queue_seconds": [
+        2,
+        8,
+        15
+      ],
+      "span": 6,
+      "message_gap_seconds": 5,
+      "observer_elapsed_seconds": 6.002977,
+      "mode": "positive",
+      "input_count": 18,
+      "fast_admitted": 18,
+      "needs_semantic_path": 0,
+      "first_semantic_path_at_seconds": null,
+      "post_topic_change_fast_admitted": 0,
+      "simulated_observations": 14,
+      "completed_observations": 13,
+      "positive_foci": 13,
+      "queue_expired": 2,
+      "queue_dropped": 0,
+      "observed_focus_delay_seconds": {
+        "min": 10.0,
+        "max": 31.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": true,
+      "queue_seconds": [
+        2,
+        8,
+        15
+      ],
+      "span": 2,
+      "message_gap_seconds": 10,
+      "observer_elapsed_seconds": 6.002977,
+      "mode": "positive",
+      "input_count": 9,
+      "fast_admitted": 9,
+      "needs_semantic_path": 0,
+      "first_semantic_path_at_seconds": null,
+      "post_topic_change_fast_admitted": 0,
+      "simulated_observations": 9,
+      "completed_observations": 9,
+      "positive_foci": 9,
+      "queue_expired": 0,
+      "queue_dropped": 0,
+      "observed_focus_delay_seconds": {
+        "min": 10.0,
+        "max": 10.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": true,
+      "queue_seconds": [
+        2,
+        8,
+        15
+      ],
+      "span": 3,
+      "message_gap_seconds": 10,
+      "observer_elapsed_seconds": 6.002977,
+      "mode": "positive",
+      "input_count": 9,
+      "fast_admitted": 9,
+      "needs_semantic_path": 0,
+      "first_semantic_path_at_seconds": null,
+      "post_topic_change_fast_admitted": 0,
+      "simulated_observations": 9,
+      "completed_observations": 9,
+      "positive_foci": 9,
+      "queue_expired": 0,
+      "queue_dropped": 0,
+      "observed_focus_delay_seconds": {
+        "min": 10.0,
+        "max": 10.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": true,
+      "queue_seconds": [
+        2,
+        8,
+        15
+      ],
+      "span": 4,
+      "message_gap_seconds": 10,
+      "observer_elapsed_seconds": 6.002977,
+      "mode": "positive",
+      "input_count": 9,
+      "fast_admitted": 9,
+      "needs_semantic_path": 0,
+      "first_semantic_path_at_seconds": null,
+      "post_topic_change_fast_admitted": 0,
+      "simulated_observations": 9,
+      "completed_observations": 9,
+      "positive_foci": 9,
+      "queue_expired": 0,
+      "queue_dropped": 0,
+      "observed_focus_delay_seconds": {
+        "min": 10.0,
+        "max": 10.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": true,
+      "queue_seconds": [
+        2,
+        8,
+        15
+      ],
+      "span": 6,
+      "message_gap_seconds": 10,
+      "observer_elapsed_seconds": 6.002977,
+      "mode": "positive",
+      "input_count": 9,
+      "fast_admitted": 9,
+      "needs_semantic_path": 0,
+      "first_semantic_path_at_seconds": null,
+      "post_topic_change_fast_admitted": 0,
+      "simulated_observations": 9,
+      "completed_observations": 9,
+      "positive_foci": 9,
+      "queue_expired": 0,
+      "queue_dropped": 0,
+      "observed_focus_delay_seconds": {
+        "min": 10.0,
+        "max": 10.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": true,
+      "queue_seconds": [
+        2,
+        8,
+        15
+      ],
+      "span": 2,
+      "message_gap_seconds": 1,
+      "observer_elapsed_seconds": 6.002977,
+      "mode": "unknown",
+      "input_count": 90,
+      "fast_admitted": 2,
+      "needs_semantic_path": 88,
+      "first_semantic_path_at_seconds": 2,
+      "post_topic_change_fast_admitted": 0,
+      "simulated_observations": 14,
+      "completed_observations": 13,
+      "positive_foci": 0,
+      "queue_expired": 13,
+      "queue_dropped": 15,
+      "observed_focus_delay_seconds": {
+        "min": 10.0,
+        "max": 17.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": true,
+      "queue_seconds": [
+        2,
+        8,
+        15
+      ],
+      "span": 3,
+      "message_gap_seconds": 1,
+      "observer_elapsed_seconds": 6.002977,
+      "mode": "unknown",
+      "input_count": 90,
+      "fast_admitted": 3,
+      "needs_semantic_path": 87,
+      "first_semantic_path_at_seconds": 3,
+      "post_topic_change_fast_admitted": 0,
+      "simulated_observations": 14,
+      "completed_observations": 13,
+      "positive_foci": 0,
+      "queue_expired": 13,
+      "queue_dropped": 15,
+      "observed_focus_delay_seconds": {
+        "min": 10.0,
+        "max": 17.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": true,
+      "queue_seconds": [
+        2,
+        8,
+        15
+      ],
+      "span": 4,
+      "message_gap_seconds": 1,
+      "observer_elapsed_seconds": 6.002977,
+      "mode": "unknown",
+      "input_count": 90,
+      "fast_admitted": 4,
+      "needs_semantic_path": 86,
+      "first_semantic_path_at_seconds": 4,
+      "post_topic_change_fast_admitted": 0,
+      "simulated_observations": 14,
+      "completed_observations": 13,
+      "positive_foci": 0,
+      "queue_expired": 13,
+      "queue_dropped": 15,
+      "observed_focus_delay_seconds": {
+        "min": 10.0,
+        "max": 17.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": true,
+      "queue_seconds": [
+        2,
+        8,
+        15
+      ],
+      "span": 6,
+      "message_gap_seconds": 1,
+      "observer_elapsed_seconds": 6.002977,
+      "mode": "unknown",
+      "input_count": 90,
+      "fast_admitted": 6,
+      "needs_semantic_path": 84,
+      "first_semantic_path_at_seconds": 6,
+      "post_topic_change_fast_admitted": 0,
+      "simulated_observations": 14,
+      "completed_observations": 13,
+      "positive_foci": 0,
+      "queue_expired": 13,
+      "queue_dropped": 15,
+      "observed_focus_delay_seconds": {
+        "min": 10.0,
+        "max": 17.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": true,
+      "queue_seconds": [
+        2,
+        8,
+        15
+      ],
+      "span": 2,
+      "message_gap_seconds": 3,
+      "observer_elapsed_seconds": 6.002977,
+      "mode": "unknown",
+      "input_count": 30,
+      "fast_admitted": 2,
+      "needs_semantic_path": 28,
+      "first_semantic_path_at_seconds": 6,
+      "post_topic_change_fast_admitted": 0,
+      "simulated_observations": 14,
+      "completed_observations": 13,
+      "positive_foci": 0,
+      "queue_expired": 6,
+      "queue_dropped": 0,
+      "observed_focus_delay_seconds": {
+        "min": 10.0,
+        "max": 22.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": true,
+      "queue_seconds": [
+        2,
+        8,
+        15
+      ],
+      "span": 3,
+      "message_gap_seconds": 3,
+      "observer_elapsed_seconds": 6.002977,
+      "mode": "unknown",
+      "input_count": 30,
+      "fast_admitted": 3,
+      "needs_semantic_path": 27,
+      "first_semantic_path_at_seconds": 9,
+      "post_topic_change_fast_admitted": 0,
+      "simulated_observations": 14,
+      "completed_observations": 13,
+      "positive_foci": 0,
+      "queue_expired": 6,
+      "queue_dropped": 0,
+      "observed_focus_delay_seconds": {
+        "min": 10.0,
+        "max": 22.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": true,
+      "queue_seconds": [
+        2,
+        8,
+        15
+      ],
+      "span": 4,
+      "message_gap_seconds": 3,
+      "observer_elapsed_seconds": 6.002977,
+      "mode": "unknown",
+      "input_count": 30,
+      "fast_admitted": 4,
+      "needs_semantic_path": 26,
+      "first_semantic_path_at_seconds": 12,
+      "post_topic_change_fast_admitted": 0,
+      "simulated_observations": 14,
+      "completed_observations": 13,
+      "positive_foci": 0,
+      "queue_expired": 6,
+      "queue_dropped": 0,
+      "observed_focus_delay_seconds": {
+        "min": 10.0,
+        "max": 22.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": true,
+      "queue_seconds": [
+        2,
+        8,
+        15
+      ],
+      "span": 6,
+      "message_gap_seconds": 3,
+      "observer_elapsed_seconds": 6.002977,
+      "mode": "unknown",
+      "input_count": 30,
+      "fast_admitted": 6,
+      "needs_semantic_path": 24,
+      "first_semantic_path_at_seconds": 18,
+      "post_topic_change_fast_admitted": 0,
+      "simulated_observations": 14,
+      "completed_observations": 13,
+      "positive_foci": 0,
+      "queue_expired": 6,
+      "queue_dropped": 0,
+      "observed_focus_delay_seconds": {
+        "min": 10.0,
+        "max": 22.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": true,
+      "queue_seconds": [
+        2,
+        8,
+        15
+      ],
+      "span": 2,
+      "message_gap_seconds": 5,
+      "observer_elapsed_seconds": 6.002977,
+      "mode": "unknown",
+      "input_count": 18,
+      "fast_admitted": 2,
+      "needs_semantic_path": 16,
+      "first_semantic_path_at_seconds": 10,
+      "post_topic_change_fast_admitted": 0,
+      "simulated_observations": 14,
+      "completed_observations": 13,
+      "positive_foci": 0,
+      "queue_expired": 2,
+      "queue_dropped": 0,
+      "observed_focus_delay_seconds": {
+        "min": 10.0,
+        "max": 31.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": true,
+      "queue_seconds": [
+        2,
+        8,
+        15
+      ],
+      "span": 3,
+      "message_gap_seconds": 5,
+      "observer_elapsed_seconds": 6.002977,
+      "mode": "unknown",
+      "input_count": 18,
+      "fast_admitted": 3,
+      "needs_semantic_path": 15,
+      "first_semantic_path_at_seconds": 15,
+      "post_topic_change_fast_admitted": 0,
+      "simulated_observations": 14,
+      "completed_observations": 13,
+      "positive_foci": 0,
+      "queue_expired": 2,
+      "queue_dropped": 0,
+      "observed_focus_delay_seconds": {
+        "min": 10.0,
+        "max": 31.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": true,
+      "queue_seconds": [
+        2,
+        8,
+        15
+      ],
+      "span": 4,
+      "message_gap_seconds": 5,
+      "observer_elapsed_seconds": 6.002977,
+      "mode": "unknown",
+      "input_count": 18,
+      "fast_admitted": 4,
+      "needs_semantic_path": 14,
+      "first_semantic_path_at_seconds": 20,
+      "post_topic_change_fast_admitted": 0,
+      "simulated_observations": 14,
+      "completed_observations": 13,
+      "positive_foci": 0,
+      "queue_expired": 2,
+      "queue_dropped": 0,
+      "observed_focus_delay_seconds": {
+        "min": 10.0,
+        "max": 31.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": true,
+      "queue_seconds": [
+        2,
+        8,
+        15
+      ],
+      "span": 6,
+      "message_gap_seconds": 5,
+      "observer_elapsed_seconds": 6.002977,
+      "mode": "unknown",
+      "input_count": 18,
+      "fast_admitted": 6,
+      "needs_semantic_path": 12,
+      "first_semantic_path_at_seconds": 30,
+      "post_topic_change_fast_admitted": 0,
+      "simulated_observations": 14,
+      "completed_observations": 13,
+      "positive_foci": 0,
+      "queue_expired": 2,
+      "queue_dropped": 0,
+      "observed_focus_delay_seconds": {
+        "min": 10.0,
+        "max": 31.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": true,
+      "queue_seconds": [
+        2,
+        8,
+        15
+      ],
+      "span": 2,
+      "message_gap_seconds": 10,
+      "observer_elapsed_seconds": 6.002977,
+      "mode": "unknown",
+      "input_count": 9,
+      "fast_admitted": 2,
+      "needs_semantic_path": 7,
+      "first_semantic_path_at_seconds": 20,
+      "post_topic_change_fast_admitted": 0,
+      "simulated_observations": 9,
+      "completed_observations": 9,
+      "positive_foci": 0,
+      "queue_expired": 0,
+      "queue_dropped": 0,
+      "observed_focus_delay_seconds": {
+        "min": 10.0,
+        "max": 10.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": true,
+      "queue_seconds": [
+        2,
+        8,
+        15
+      ],
+      "span": 3,
+      "message_gap_seconds": 10,
+      "observer_elapsed_seconds": 6.002977,
+      "mode": "unknown",
+      "input_count": 9,
+      "fast_admitted": 3,
+      "needs_semantic_path": 6,
+      "first_semantic_path_at_seconds": 30,
+      "post_topic_change_fast_admitted": 0,
+      "simulated_observations": 9,
+      "completed_observations": 9,
+      "positive_foci": 0,
+      "queue_expired": 0,
+      "queue_dropped": 0,
+      "observed_focus_delay_seconds": {
+        "min": 10.0,
+        "max": 10.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": true,
+      "queue_seconds": [
+        2,
+        8,
+        15
+      ],
+      "span": 4,
+      "message_gap_seconds": 10,
+      "observer_elapsed_seconds": 6.002977,
+      "mode": "unknown",
+      "input_count": 9,
+      "fast_admitted": 4,
+      "needs_semantic_path": 5,
+      "first_semantic_path_at_seconds": 40,
+      "post_topic_change_fast_admitted": 0,
+      "simulated_observations": 9,
+      "completed_observations": 9,
+      "positive_foci": 0,
+      "queue_expired": 0,
+      "queue_dropped": 0,
+      "observed_focus_delay_seconds": {
+        "min": 10.0,
+        "max": 10.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": true,
+      "queue_seconds": [
+        2,
+        8,
+        15
+      ],
+      "span": 6,
+      "message_gap_seconds": 10,
+      "observer_elapsed_seconds": 6.002977,
+      "mode": "unknown",
+      "input_count": 9,
+      "fast_admitted": 6,
+      "needs_semantic_path": 3,
+      "first_semantic_path_at_seconds": 60,
+      "post_topic_change_fast_admitted": 0,
+      "simulated_observations": 9,
+      "completed_observations": 9,
+      "positive_foci": 0,
+      "queue_expired": 0,
+      "queue_dropped": 0,
+      "observed_focus_delay_seconds": {
+        "min": 10.0,
+        "max": 10.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": true,
+      "queue_seconds": [
+        2,
+        8,
+        15
+      ],
+      "span": 2,
+      "message_gap_seconds": 1,
+      "observer_elapsed_seconds": 6.002977,
+      "mode": "topic_change",
+      "input_count": 90,
+      "fast_admitted": 6,
+      "needs_semantic_path": 84,
+      "first_semantic_path_at_seconds": 2,
+      "post_topic_change_fast_admitted": 1,
+      "simulated_observations": 14,
+      "completed_observations": 13,
+      "positive_foci": 4,
+      "queue_expired": 13,
+      "queue_dropped": 15,
+      "observed_focus_delay_seconds": {
+        "min": 10.0,
+        "max": 17.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": true,
+      "queue_seconds": [
+        2,
+        8,
+        15
+      ],
+      "span": 3,
+      "message_gap_seconds": 1,
+      "observer_elapsed_seconds": 6.002977,
+      "mode": "topic_change",
+      "input_count": 90,
+      "fast_admitted": 9,
+      "needs_semantic_path": 81,
+      "first_semantic_path_at_seconds": 3,
+      "post_topic_change_fast_admitted": 2,
+      "simulated_observations": 14,
+      "completed_observations": 13,
+      "positive_foci": 4,
+      "queue_expired": 13,
+      "queue_dropped": 15,
+      "observed_focus_delay_seconds": {
+        "min": 10.0,
+        "max": 17.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": true,
+      "queue_seconds": [
+        2,
+        8,
+        15
+      ],
+      "span": 4,
+      "message_gap_seconds": 1,
+      "observer_elapsed_seconds": 6.002977,
+      "mode": "topic_change",
+      "input_count": 90,
+      "fast_admitted": 12,
+      "needs_semantic_path": 78,
+      "first_semantic_path_at_seconds": 4,
+      "post_topic_change_fast_admitted": 3,
+      "simulated_observations": 14,
+      "completed_observations": 13,
+      "positive_foci": 4,
+      "queue_expired": 13,
+      "queue_dropped": 15,
+      "observed_focus_delay_seconds": {
+        "min": 10.0,
+        "max": 17.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": true,
+      "queue_seconds": [
+        2,
+        8,
+        15
+      ],
+      "span": 6,
+      "message_gap_seconds": 1,
+      "observer_elapsed_seconds": 6.002977,
+      "mode": "topic_change",
+      "input_count": 90,
+      "fast_admitted": 18,
+      "needs_semantic_path": 72,
+      "first_semantic_path_at_seconds": 6,
+      "post_topic_change_fast_admitted": 5,
+      "simulated_observations": 14,
+      "completed_observations": 13,
+      "positive_foci": 4,
+      "queue_expired": 13,
+      "queue_dropped": 15,
+      "observed_focus_delay_seconds": {
+        "min": 10.0,
+        "max": 17.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": true,
+      "queue_seconds": [
+        2,
+        8,
+        15
+      ],
+      "span": 2,
+      "message_gap_seconds": 3,
+      "observer_elapsed_seconds": 6.002977,
+      "mode": "topic_change",
+      "input_count": 30,
+      "fast_admitted": 6,
+      "needs_semantic_path": 24,
+      "first_semantic_path_at_seconds": 6,
+      "post_topic_change_fast_admitted": 1,
+      "simulated_observations": 14,
+      "completed_observations": 13,
+      "positive_foci": 4,
+      "queue_expired": 6,
+      "queue_dropped": 0,
+      "observed_focus_delay_seconds": {
+        "min": 10.0,
+        "max": 22.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": true,
+      "queue_seconds": [
+        2,
+        8,
+        15
+      ],
+      "span": 3,
+      "message_gap_seconds": 3,
+      "observer_elapsed_seconds": 6.002977,
+      "mode": "topic_change",
+      "input_count": 30,
+      "fast_admitted": 9,
+      "needs_semantic_path": 21,
+      "first_semantic_path_at_seconds": 9,
+      "post_topic_change_fast_admitted": 2,
+      "simulated_observations": 14,
+      "completed_observations": 13,
+      "positive_foci": 4,
+      "queue_expired": 6,
+      "queue_dropped": 0,
+      "observed_focus_delay_seconds": {
+        "min": 10.0,
+        "max": 22.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": true,
+      "queue_seconds": [
+        2,
+        8,
+        15
+      ],
+      "span": 4,
+      "message_gap_seconds": 3,
+      "observer_elapsed_seconds": 6.002977,
+      "mode": "topic_change",
+      "input_count": 30,
+      "fast_admitted": 11,
+      "needs_semantic_path": 19,
+      "first_semantic_path_at_seconds": 15,
+      "post_topic_change_fast_admitted": 3,
+      "simulated_observations": 14,
+      "completed_observations": 13,
+      "positive_foci": 4,
+      "queue_expired": 6,
+      "queue_dropped": 0,
+      "observed_focus_delay_seconds": {
+        "min": 10.0,
+        "max": 22.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": true,
+      "queue_seconds": [
+        2,
+        8,
+        15
+      ],
+      "span": 6,
+      "message_gap_seconds": 3,
+      "observer_elapsed_seconds": 6.002977,
+      "mode": "topic_change",
+      "input_count": 30,
+      "fast_admitted": 15,
+      "needs_semantic_path": 15,
+      "first_semantic_path_at_seconds": 45,
+      "post_topic_change_fast_admitted": 5,
+      "simulated_observations": 14,
+      "completed_observations": 13,
+      "positive_foci": 4,
+      "queue_expired": 6,
+      "queue_dropped": 0,
+      "observed_focus_delay_seconds": {
+        "min": 10.0,
+        "max": 22.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": true,
+      "queue_seconds": [
+        2,
+        8,
+        15
+      ],
+      "span": 2,
+      "message_gap_seconds": 5,
+      "observer_elapsed_seconds": 6.002977,
+      "mode": "topic_change",
+      "input_count": 18,
+      "fast_admitted": 6,
+      "needs_semantic_path": 12,
+      "first_semantic_path_at_seconds": 10,
+      "post_topic_change_fast_admitted": 2,
+      "simulated_observations": 14,
+      "completed_observations": 13,
+      "positive_foci": 4,
+      "queue_expired": 2,
+      "queue_dropped": 0,
+      "observed_focus_delay_seconds": {
+        "min": 10.0,
+        "max": 31.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": true,
+      "queue_seconds": [
+        2,
+        8,
+        15
+      ],
+      "span": 3,
+      "message_gap_seconds": 5,
+      "observer_elapsed_seconds": 6.002977,
+      "mode": "topic_change",
+      "input_count": 18,
+      "fast_admitted": 8,
+      "needs_semantic_path": 10,
+      "first_semantic_path_at_seconds": 25,
+      "post_topic_change_fast_admitted": 3,
+      "simulated_observations": 14,
+      "completed_observations": 13,
+      "positive_foci": 4,
+      "queue_expired": 2,
+      "queue_dropped": 0,
+      "observed_focus_delay_seconds": {
+        "min": 10.0,
+        "max": 31.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": true,
+      "queue_seconds": [
+        2,
+        8,
+        15
+      ],
+      "span": 4,
+      "message_gap_seconds": 5,
+      "observer_elapsed_seconds": 6.002977,
+      "mode": "topic_change",
+      "input_count": 18,
+      "fast_admitted": 9,
+      "needs_semantic_path": 9,
+      "first_semantic_path_at_seconds": 45,
+      "post_topic_change_fast_admitted": 3,
+      "simulated_observations": 14,
+      "completed_observations": 13,
+      "positive_foci": 4,
+      "queue_expired": 2,
+      "queue_dropped": 0,
+      "observed_focus_delay_seconds": {
+        "min": 10.0,
+        "max": 31.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": true,
+      "queue_seconds": [
+        2,
+        8,
+        15
+      ],
+      "span": 6,
+      "message_gap_seconds": 5,
+      "observer_elapsed_seconds": 6.002977,
+      "mode": "topic_change",
+      "input_count": 18,
+      "fast_admitted": 9,
+      "needs_semantic_path": 9,
+      "first_semantic_path_at_seconds": 45,
+      "post_topic_change_fast_admitted": 3,
+      "simulated_observations": 14,
+      "completed_observations": 13,
+      "positive_foci": 4,
+      "queue_expired": 2,
+      "queue_dropped": 0,
+      "observed_focus_delay_seconds": {
+        "min": 10.0,
+        "max": 31.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": true,
+      "queue_seconds": [
+        2,
+        8,
+        15
+      ],
+      "span": 2,
+      "message_gap_seconds": 10,
+      "observer_elapsed_seconds": 6.002977,
+      "mode": "topic_change",
+      "input_count": 9,
+      "fast_admitted": 5,
+      "needs_semantic_path": 4,
+      "first_semantic_path_at_seconds": 50,
+      "post_topic_change_fast_admitted": 2,
+      "simulated_observations": 9,
+      "completed_observations": 9,
+      "positive_foci": 3,
+      "queue_expired": 0,
+      "queue_dropped": 0,
+      "observed_focus_delay_seconds": {
+        "min": 10.0,
+        "max": 10.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": true,
+      "queue_seconds": [
+        2,
+        8,
+        15
+      ],
+      "span": 3,
+      "message_gap_seconds": 10,
+      "observer_elapsed_seconds": 6.002977,
+      "mode": "topic_change",
+      "input_count": 9,
+      "fast_admitted": 5,
+      "needs_semantic_path": 4,
+      "first_semantic_path_at_seconds": 50,
+      "post_topic_change_fast_admitted": 2,
+      "simulated_observations": 9,
+      "completed_observations": 9,
+      "positive_foci": 3,
+      "queue_expired": 0,
+      "queue_dropped": 0,
+      "observed_focus_delay_seconds": {
+        "min": 10.0,
+        "max": 10.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": true,
+      "queue_seconds": [
+        2,
+        8,
+        15
+      ],
+      "span": 4,
+      "message_gap_seconds": 10,
+      "observer_elapsed_seconds": 6.002977,
+      "mode": "topic_change",
+      "input_count": 9,
+      "fast_admitted": 5,
+      "needs_semantic_path": 4,
+      "first_semantic_path_at_seconds": 50,
+      "post_topic_change_fast_admitted": 2,
+      "simulated_observations": 9,
+      "completed_observations": 9,
+      "positive_foci": 3,
+      "queue_expired": 0,
+      "queue_dropped": 0,
+      "observed_focus_delay_seconds": {
+        "min": 10.0,
+        "max": 10.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": true,
+      "queue_seconds": [
+        2,
+        8,
+        15
+      ],
+      "span": 6,
+      "message_gap_seconds": 10,
+      "observer_elapsed_seconds": 6.002977,
+      "mode": "topic_change",
+      "input_count": 9,
+      "fast_admitted": 5,
+      "needs_semantic_path": 4,
+      "first_semantic_path_at_seconds": 50,
+      "post_topic_change_fast_admitted": 2,
+      "simulated_observations": 9,
+      "completed_observations": 9,
+      "positive_foci": 3,
+      "queue_expired": 0,
+      "queue_dropped": 0,
+      "observed_focus_delay_seconds": {
+        "min": 10.0,
+        "max": 10.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": true,
+      "queue_seconds": [
+        2,
+        8,
+        15
+      ],
+      "span": 2,
+      "message_gap_seconds": 1,
+      "observer_elapsed_seconds": 6.08516,
+      "mode": "positive",
+      "input_count": 90,
+      "fast_admitted": 12,
+      "needs_semantic_path": 78,
+      "first_semantic_path_at_seconds": 2,
+      "post_topic_change_fast_admitted": 0,
+      "simulated_observations": 14,
+      "completed_observations": 13,
+      "positive_foci": 13,
+      "queue_expired": 13,
+      "queue_dropped": 15,
+      "observed_focus_delay_seconds": {
+        "min": 10.0,
+        "max": 17.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": true,
+      "queue_seconds": [
+        2,
+        8,
+        15
+      ],
+      "span": 3,
+      "message_gap_seconds": 1,
+      "observer_elapsed_seconds": 6.08516,
+      "mode": "positive",
+      "input_count": 90,
+      "fast_admitted": 18,
+      "needs_semantic_path": 72,
+      "first_semantic_path_at_seconds": 3,
+      "post_topic_change_fast_admitted": 0,
+      "simulated_observations": 14,
+      "completed_observations": 13,
+      "positive_foci": 13,
+      "queue_expired": 13,
+      "queue_dropped": 15,
+      "observed_focus_delay_seconds": {
+        "min": 10.0,
+        "max": 17.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": true,
+      "queue_seconds": [
+        2,
+        8,
+        15
+      ],
+      "span": 4,
+      "message_gap_seconds": 1,
+      "observer_elapsed_seconds": 6.08516,
+      "mode": "positive",
+      "input_count": 90,
+      "fast_admitted": 24,
+      "needs_semantic_path": 66,
+      "first_semantic_path_at_seconds": 4,
+      "post_topic_change_fast_admitted": 0,
+      "simulated_observations": 14,
+      "completed_observations": 13,
+      "positive_foci": 13,
+      "queue_expired": 13,
+      "queue_dropped": 15,
+      "observed_focus_delay_seconds": {
+        "min": 10.0,
+        "max": 17.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": true,
+      "queue_seconds": [
+        2,
+        8,
+        15
+      ],
+      "span": 6,
+      "message_gap_seconds": 1,
+      "observer_elapsed_seconds": 6.08516,
+      "mode": "positive",
+      "input_count": 90,
+      "fast_admitted": 36,
+      "needs_semantic_path": 54,
+      "first_semantic_path_at_seconds": 6,
+      "post_topic_change_fast_admitted": 0,
+      "simulated_observations": 14,
+      "completed_observations": 13,
+      "positive_foci": 13,
+      "queue_expired": 13,
+      "queue_dropped": 15,
+      "observed_focus_delay_seconds": {
+        "min": 10.0,
+        "max": 17.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": true,
+      "queue_seconds": [
+        2,
+        8,
+        15
+      ],
+      "span": 2,
+      "message_gap_seconds": 3,
+      "observer_elapsed_seconds": 6.08516,
+      "mode": "positive",
+      "input_count": 30,
+      "fast_admitted": 12,
+      "needs_semantic_path": 18,
+      "first_semantic_path_at_seconds": 6,
+      "post_topic_change_fast_admitted": 0,
+      "simulated_observations": 14,
+      "completed_observations": 13,
+      "positive_foci": 13,
+      "queue_expired": 6,
+      "queue_dropped": 0,
+      "observed_focus_delay_seconds": {
+        "min": 10.0,
+        "max": 22.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": true,
+      "queue_seconds": [
+        2,
+        8,
+        15
+      ],
+      "span": 3,
+      "message_gap_seconds": 3,
+      "observer_elapsed_seconds": 6.08516,
+      "mode": "positive",
+      "input_count": 30,
+      "fast_admitted": 18,
+      "needs_semantic_path": 12,
+      "first_semantic_path_at_seconds": 9,
+      "post_topic_change_fast_admitted": 0,
+      "simulated_observations": 14,
+      "completed_observations": 13,
+      "positive_foci": 13,
+      "queue_expired": 6,
+      "queue_dropped": 0,
+      "observed_focus_delay_seconds": {
+        "min": 10.0,
+        "max": 22.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": true,
+      "queue_seconds": [
+        2,
+        8,
+        15
+      ],
+      "span": 4,
+      "message_gap_seconds": 3,
+      "observer_elapsed_seconds": 6.08516,
+      "mode": "positive",
+      "input_count": 30,
+      "fast_admitted": 23,
+      "needs_semantic_path": 7,
+      "first_semantic_path_at_seconds": 15,
+      "post_topic_change_fast_admitted": 0,
+      "simulated_observations": 14,
+      "completed_observations": 13,
+      "positive_foci": 13,
+      "queue_expired": 6,
+      "queue_dropped": 0,
+      "observed_focus_delay_seconds": {
+        "min": 10.0,
+        "max": 22.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": true,
+      "queue_seconds": [
+        2,
+        8,
+        15
+      ],
+      "span": 6,
+      "message_gap_seconds": 3,
+      "observer_elapsed_seconds": 6.08516,
+      "mode": "positive",
+      "input_count": 30,
+      "fast_admitted": 30,
+      "needs_semantic_path": 0,
+      "first_semantic_path_at_seconds": null,
+      "post_topic_change_fast_admitted": 0,
+      "simulated_observations": 14,
+      "completed_observations": 13,
+      "positive_foci": 13,
+      "queue_expired": 6,
+      "queue_dropped": 0,
+      "observed_focus_delay_seconds": {
+        "min": 10.0,
+        "max": 22.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": true,
+      "queue_seconds": [
+        2,
+        8,
+        15
+      ],
+      "span": 2,
+      "message_gap_seconds": 5,
+      "observer_elapsed_seconds": 6.08516,
+      "mode": "positive",
+      "input_count": 18,
+      "fast_admitted": 12,
+      "needs_semantic_path": 6,
+      "first_semantic_path_at_seconds": 10,
+      "post_topic_change_fast_admitted": 0,
+      "simulated_observations": 14,
+      "completed_observations": 13,
+      "positive_foci": 13,
+      "queue_expired": 2,
+      "queue_dropped": 0,
+      "observed_focus_delay_seconds": {
+        "min": 10.0,
+        "max": 31.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": true,
+      "queue_seconds": [
+        2,
+        8,
+        15
+      ],
+      "span": 3,
+      "message_gap_seconds": 5,
+      "observer_elapsed_seconds": 6.08516,
+      "mode": "positive",
+      "input_count": 18,
+      "fast_admitted": 15,
+      "needs_semantic_path": 3,
+      "first_semantic_path_at_seconds": 25,
+      "post_topic_change_fast_admitted": 0,
+      "simulated_observations": 14,
+      "completed_observations": 13,
+      "positive_foci": 13,
+      "queue_expired": 2,
+      "queue_dropped": 0,
+      "observed_focus_delay_seconds": {
+        "min": 10.0,
+        "max": 31.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": true,
+      "queue_seconds": [
+        2,
+        8,
+        15
+      ],
+      "span": 4,
+      "message_gap_seconds": 5,
+      "observer_elapsed_seconds": 6.08516,
+      "mode": "positive",
+      "input_count": 18,
+      "fast_admitted": 18,
+      "needs_semantic_path": 0,
+      "first_semantic_path_at_seconds": null,
+      "post_topic_change_fast_admitted": 0,
+      "simulated_observations": 14,
+      "completed_observations": 13,
+      "positive_foci": 13,
+      "queue_expired": 2,
+      "queue_dropped": 0,
+      "observed_focus_delay_seconds": {
+        "min": 10.0,
+        "max": 31.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": true,
+      "queue_seconds": [
+        2,
+        8,
+        15
+      ],
+      "span": 6,
+      "message_gap_seconds": 5,
+      "observer_elapsed_seconds": 6.08516,
+      "mode": "positive",
+      "input_count": 18,
+      "fast_admitted": 18,
+      "needs_semantic_path": 0,
+      "first_semantic_path_at_seconds": null,
+      "post_topic_change_fast_admitted": 0,
+      "simulated_observations": 14,
+      "completed_observations": 13,
+      "positive_foci": 13,
+      "queue_expired": 2,
+      "queue_dropped": 0,
+      "observed_focus_delay_seconds": {
+        "min": 10.0,
+        "max": 31.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": true,
+      "queue_seconds": [
+        2,
+        8,
+        15
+      ],
+      "span": 2,
+      "message_gap_seconds": 10,
+      "observer_elapsed_seconds": 6.08516,
+      "mode": "positive",
+      "input_count": 9,
+      "fast_admitted": 9,
+      "needs_semantic_path": 0,
+      "first_semantic_path_at_seconds": null,
+      "post_topic_change_fast_admitted": 0,
+      "simulated_observations": 9,
+      "completed_observations": 9,
+      "positive_foci": 9,
+      "queue_expired": 0,
+      "queue_dropped": 0,
+      "observed_focus_delay_seconds": {
+        "min": 10.0,
+        "max": 10.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": true,
+      "queue_seconds": [
+        2,
+        8,
+        15
+      ],
+      "span": 3,
+      "message_gap_seconds": 10,
+      "observer_elapsed_seconds": 6.08516,
+      "mode": "positive",
+      "input_count": 9,
+      "fast_admitted": 9,
+      "needs_semantic_path": 0,
+      "first_semantic_path_at_seconds": null,
+      "post_topic_change_fast_admitted": 0,
+      "simulated_observations": 9,
+      "completed_observations": 9,
+      "positive_foci": 9,
+      "queue_expired": 0,
+      "queue_dropped": 0,
+      "observed_focus_delay_seconds": {
+        "min": 10.0,
+        "max": 10.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": true,
+      "queue_seconds": [
+        2,
+        8,
+        15
+      ],
+      "span": 4,
+      "message_gap_seconds": 10,
+      "observer_elapsed_seconds": 6.08516,
+      "mode": "positive",
+      "input_count": 9,
+      "fast_admitted": 9,
+      "needs_semantic_path": 0,
+      "first_semantic_path_at_seconds": null,
+      "post_topic_change_fast_admitted": 0,
+      "simulated_observations": 9,
+      "completed_observations": 9,
+      "positive_foci": 9,
+      "queue_expired": 0,
+      "queue_dropped": 0,
+      "observed_focus_delay_seconds": {
+        "min": 10.0,
+        "max": 10.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": true,
+      "queue_seconds": [
+        2,
+        8,
+        15
+      ],
+      "span": 6,
+      "message_gap_seconds": 10,
+      "observer_elapsed_seconds": 6.08516,
+      "mode": "positive",
+      "input_count": 9,
+      "fast_admitted": 9,
+      "needs_semantic_path": 0,
+      "first_semantic_path_at_seconds": null,
+      "post_topic_change_fast_admitted": 0,
+      "simulated_observations": 9,
+      "completed_observations": 9,
+      "positive_foci": 9,
+      "queue_expired": 0,
+      "queue_dropped": 0,
+      "observed_focus_delay_seconds": {
+        "min": 10.0,
+        "max": 10.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": true,
+      "queue_seconds": [
+        2,
+        8,
+        15
+      ],
+      "span": 2,
+      "message_gap_seconds": 1,
+      "observer_elapsed_seconds": 6.08516,
+      "mode": "unknown",
+      "input_count": 90,
+      "fast_admitted": 2,
+      "needs_semantic_path": 88,
+      "first_semantic_path_at_seconds": 2,
+      "post_topic_change_fast_admitted": 0,
+      "simulated_observations": 14,
+      "completed_observations": 13,
+      "positive_foci": 0,
+      "queue_expired": 13,
+      "queue_dropped": 15,
+      "observed_focus_delay_seconds": {
+        "min": 10.0,
+        "max": 17.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": true,
+      "queue_seconds": [
+        2,
+        8,
+        15
+      ],
+      "span": 3,
+      "message_gap_seconds": 1,
+      "observer_elapsed_seconds": 6.08516,
+      "mode": "unknown",
+      "input_count": 90,
+      "fast_admitted": 3,
+      "needs_semantic_path": 87,
+      "first_semantic_path_at_seconds": 3,
+      "post_topic_change_fast_admitted": 0,
+      "simulated_observations": 14,
+      "completed_observations": 13,
+      "positive_foci": 0,
+      "queue_expired": 13,
+      "queue_dropped": 15,
+      "observed_focus_delay_seconds": {
+        "min": 10.0,
+        "max": 17.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": true,
+      "queue_seconds": [
+        2,
+        8,
+        15
+      ],
+      "span": 4,
+      "message_gap_seconds": 1,
+      "observer_elapsed_seconds": 6.08516,
+      "mode": "unknown",
+      "input_count": 90,
+      "fast_admitted": 4,
+      "needs_semantic_path": 86,
+      "first_semantic_path_at_seconds": 4,
+      "post_topic_change_fast_admitted": 0,
+      "simulated_observations": 14,
+      "completed_observations": 13,
+      "positive_foci": 0,
+      "queue_expired": 13,
+      "queue_dropped": 15,
+      "observed_focus_delay_seconds": {
+        "min": 10.0,
+        "max": 17.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": true,
+      "queue_seconds": [
+        2,
+        8,
+        15
+      ],
+      "span": 6,
+      "message_gap_seconds": 1,
+      "observer_elapsed_seconds": 6.08516,
+      "mode": "unknown",
+      "input_count": 90,
+      "fast_admitted": 6,
+      "needs_semantic_path": 84,
+      "first_semantic_path_at_seconds": 6,
+      "post_topic_change_fast_admitted": 0,
+      "simulated_observations": 14,
+      "completed_observations": 13,
+      "positive_foci": 0,
+      "queue_expired": 13,
+      "queue_dropped": 15,
+      "observed_focus_delay_seconds": {
+        "min": 10.0,
+        "max": 17.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": true,
+      "queue_seconds": [
+        2,
+        8,
+        15
+      ],
+      "span": 2,
+      "message_gap_seconds": 3,
+      "observer_elapsed_seconds": 6.08516,
+      "mode": "unknown",
+      "input_count": 30,
+      "fast_admitted": 2,
+      "needs_semantic_path": 28,
+      "first_semantic_path_at_seconds": 6,
+      "post_topic_change_fast_admitted": 0,
+      "simulated_observations": 14,
+      "completed_observations": 13,
+      "positive_foci": 0,
+      "queue_expired": 6,
+      "queue_dropped": 0,
+      "observed_focus_delay_seconds": {
+        "min": 10.0,
+        "max": 22.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": true,
+      "queue_seconds": [
+        2,
+        8,
+        15
+      ],
+      "span": 3,
+      "message_gap_seconds": 3,
+      "observer_elapsed_seconds": 6.08516,
+      "mode": "unknown",
+      "input_count": 30,
+      "fast_admitted": 3,
+      "needs_semantic_path": 27,
+      "first_semantic_path_at_seconds": 9,
+      "post_topic_change_fast_admitted": 0,
+      "simulated_observations": 14,
+      "completed_observations": 13,
+      "positive_foci": 0,
+      "queue_expired": 6,
+      "queue_dropped": 0,
+      "observed_focus_delay_seconds": {
+        "min": 10.0,
+        "max": 22.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": true,
+      "queue_seconds": [
+        2,
+        8,
+        15
+      ],
+      "span": 4,
+      "message_gap_seconds": 3,
+      "observer_elapsed_seconds": 6.08516,
+      "mode": "unknown",
+      "input_count": 30,
+      "fast_admitted": 4,
+      "needs_semantic_path": 26,
+      "first_semantic_path_at_seconds": 12,
+      "post_topic_change_fast_admitted": 0,
+      "simulated_observations": 14,
+      "completed_observations": 13,
+      "positive_foci": 0,
+      "queue_expired": 6,
+      "queue_dropped": 0,
+      "observed_focus_delay_seconds": {
+        "min": 10.0,
+        "max": 22.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": true,
+      "queue_seconds": [
+        2,
+        8,
+        15
+      ],
+      "span": 6,
+      "message_gap_seconds": 3,
+      "observer_elapsed_seconds": 6.08516,
+      "mode": "unknown",
+      "input_count": 30,
+      "fast_admitted": 6,
+      "needs_semantic_path": 24,
+      "first_semantic_path_at_seconds": 18,
+      "post_topic_change_fast_admitted": 0,
+      "simulated_observations": 14,
+      "completed_observations": 13,
+      "positive_foci": 0,
+      "queue_expired": 6,
+      "queue_dropped": 0,
+      "observed_focus_delay_seconds": {
+        "min": 10.0,
+        "max": 22.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": true,
+      "queue_seconds": [
+        2,
+        8,
+        15
+      ],
+      "span": 2,
+      "message_gap_seconds": 5,
+      "observer_elapsed_seconds": 6.08516,
+      "mode": "unknown",
+      "input_count": 18,
+      "fast_admitted": 2,
+      "needs_semantic_path": 16,
+      "first_semantic_path_at_seconds": 10,
+      "post_topic_change_fast_admitted": 0,
+      "simulated_observations": 14,
+      "completed_observations": 13,
+      "positive_foci": 0,
+      "queue_expired": 2,
+      "queue_dropped": 0,
+      "observed_focus_delay_seconds": {
+        "min": 10.0,
+        "max": 31.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": true,
+      "queue_seconds": [
+        2,
+        8,
+        15
+      ],
+      "span": 3,
+      "message_gap_seconds": 5,
+      "observer_elapsed_seconds": 6.08516,
+      "mode": "unknown",
+      "input_count": 18,
+      "fast_admitted": 3,
+      "needs_semantic_path": 15,
+      "first_semantic_path_at_seconds": 15,
+      "post_topic_change_fast_admitted": 0,
+      "simulated_observations": 14,
+      "completed_observations": 13,
+      "positive_foci": 0,
+      "queue_expired": 2,
+      "queue_dropped": 0,
+      "observed_focus_delay_seconds": {
+        "min": 10.0,
+        "max": 31.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": true,
+      "queue_seconds": [
+        2,
+        8,
+        15
+      ],
+      "span": 4,
+      "message_gap_seconds": 5,
+      "observer_elapsed_seconds": 6.08516,
+      "mode": "unknown",
+      "input_count": 18,
+      "fast_admitted": 4,
+      "needs_semantic_path": 14,
+      "first_semantic_path_at_seconds": 20,
+      "post_topic_change_fast_admitted": 0,
+      "simulated_observations": 14,
+      "completed_observations": 13,
+      "positive_foci": 0,
+      "queue_expired": 2,
+      "queue_dropped": 0,
+      "observed_focus_delay_seconds": {
+        "min": 10.0,
+        "max": 31.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": true,
+      "queue_seconds": [
+        2,
+        8,
+        15
+      ],
+      "span": 6,
+      "message_gap_seconds": 5,
+      "observer_elapsed_seconds": 6.08516,
+      "mode": "unknown",
+      "input_count": 18,
+      "fast_admitted": 6,
+      "needs_semantic_path": 12,
+      "first_semantic_path_at_seconds": 30,
+      "post_topic_change_fast_admitted": 0,
+      "simulated_observations": 14,
+      "completed_observations": 13,
+      "positive_foci": 0,
+      "queue_expired": 2,
+      "queue_dropped": 0,
+      "observed_focus_delay_seconds": {
+        "min": 10.0,
+        "max": 31.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": true,
+      "queue_seconds": [
+        2,
+        8,
+        15
+      ],
+      "span": 2,
+      "message_gap_seconds": 10,
+      "observer_elapsed_seconds": 6.08516,
+      "mode": "unknown",
+      "input_count": 9,
+      "fast_admitted": 2,
+      "needs_semantic_path": 7,
+      "first_semantic_path_at_seconds": 20,
+      "post_topic_change_fast_admitted": 0,
+      "simulated_observations": 9,
+      "completed_observations": 9,
+      "positive_foci": 0,
+      "queue_expired": 0,
+      "queue_dropped": 0,
+      "observed_focus_delay_seconds": {
+        "min": 10.0,
+        "max": 10.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": true,
+      "queue_seconds": [
+        2,
+        8,
+        15
+      ],
+      "span": 3,
+      "message_gap_seconds": 10,
+      "observer_elapsed_seconds": 6.08516,
+      "mode": "unknown",
+      "input_count": 9,
+      "fast_admitted": 3,
+      "needs_semantic_path": 6,
+      "first_semantic_path_at_seconds": 30,
+      "post_topic_change_fast_admitted": 0,
+      "simulated_observations": 9,
+      "completed_observations": 9,
+      "positive_foci": 0,
+      "queue_expired": 0,
+      "queue_dropped": 0,
+      "observed_focus_delay_seconds": {
+        "min": 10.0,
+        "max": 10.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": true,
+      "queue_seconds": [
+        2,
+        8,
+        15
+      ],
+      "span": 4,
+      "message_gap_seconds": 10,
+      "observer_elapsed_seconds": 6.08516,
+      "mode": "unknown",
+      "input_count": 9,
+      "fast_admitted": 4,
+      "needs_semantic_path": 5,
+      "first_semantic_path_at_seconds": 40,
+      "post_topic_change_fast_admitted": 0,
+      "simulated_observations": 9,
+      "completed_observations": 9,
+      "positive_foci": 0,
+      "queue_expired": 0,
+      "queue_dropped": 0,
+      "observed_focus_delay_seconds": {
+        "min": 10.0,
+        "max": 10.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": true,
+      "queue_seconds": [
+        2,
+        8,
+        15
+      ],
+      "span": 6,
+      "message_gap_seconds": 10,
+      "observer_elapsed_seconds": 6.08516,
+      "mode": "unknown",
+      "input_count": 9,
+      "fast_admitted": 6,
+      "needs_semantic_path": 3,
+      "first_semantic_path_at_seconds": 60,
+      "post_topic_change_fast_admitted": 0,
+      "simulated_observations": 9,
+      "completed_observations": 9,
+      "positive_foci": 0,
+      "queue_expired": 0,
+      "queue_dropped": 0,
+      "observed_focus_delay_seconds": {
+        "min": 10.0,
+        "max": 10.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": true,
+      "queue_seconds": [
+        2,
+        8,
+        15
+      ],
+      "span": 2,
+      "message_gap_seconds": 1,
+      "observer_elapsed_seconds": 6.08516,
+      "mode": "topic_change",
+      "input_count": 90,
+      "fast_admitted": 6,
+      "needs_semantic_path": 84,
+      "first_semantic_path_at_seconds": 2,
+      "post_topic_change_fast_admitted": 1,
+      "simulated_observations": 14,
+      "completed_observations": 13,
+      "positive_foci": 4,
+      "queue_expired": 13,
+      "queue_dropped": 15,
+      "observed_focus_delay_seconds": {
+        "min": 10.0,
+        "max": 17.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": true,
+      "queue_seconds": [
+        2,
+        8,
+        15
+      ],
+      "span": 3,
+      "message_gap_seconds": 1,
+      "observer_elapsed_seconds": 6.08516,
+      "mode": "topic_change",
+      "input_count": 90,
+      "fast_admitted": 9,
+      "needs_semantic_path": 81,
+      "first_semantic_path_at_seconds": 3,
+      "post_topic_change_fast_admitted": 2,
+      "simulated_observations": 14,
+      "completed_observations": 13,
+      "positive_foci": 4,
+      "queue_expired": 13,
+      "queue_dropped": 15,
+      "observed_focus_delay_seconds": {
+        "min": 10.0,
+        "max": 17.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": true,
+      "queue_seconds": [
+        2,
+        8,
+        15
+      ],
+      "span": 4,
+      "message_gap_seconds": 1,
+      "observer_elapsed_seconds": 6.08516,
+      "mode": "topic_change",
+      "input_count": 90,
+      "fast_admitted": 12,
+      "needs_semantic_path": 78,
+      "first_semantic_path_at_seconds": 4,
+      "post_topic_change_fast_admitted": 3,
+      "simulated_observations": 14,
+      "completed_observations": 13,
+      "positive_foci": 4,
+      "queue_expired": 13,
+      "queue_dropped": 15,
+      "observed_focus_delay_seconds": {
+        "min": 10.0,
+        "max": 17.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": true,
+      "queue_seconds": [
+        2,
+        8,
+        15
+      ],
+      "span": 6,
+      "message_gap_seconds": 1,
+      "observer_elapsed_seconds": 6.08516,
+      "mode": "topic_change",
+      "input_count": 90,
+      "fast_admitted": 18,
+      "needs_semantic_path": 72,
+      "first_semantic_path_at_seconds": 6,
+      "post_topic_change_fast_admitted": 5,
+      "simulated_observations": 14,
+      "completed_observations": 13,
+      "positive_foci": 4,
+      "queue_expired": 13,
+      "queue_dropped": 15,
+      "observed_focus_delay_seconds": {
+        "min": 10.0,
+        "max": 17.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": true,
+      "queue_seconds": [
+        2,
+        8,
+        15
+      ],
+      "span": 2,
+      "message_gap_seconds": 3,
+      "observer_elapsed_seconds": 6.08516,
+      "mode": "topic_change",
+      "input_count": 30,
+      "fast_admitted": 6,
+      "needs_semantic_path": 24,
+      "first_semantic_path_at_seconds": 6,
+      "post_topic_change_fast_admitted": 1,
+      "simulated_observations": 14,
+      "completed_observations": 13,
+      "positive_foci": 4,
+      "queue_expired": 6,
+      "queue_dropped": 0,
+      "observed_focus_delay_seconds": {
+        "min": 10.0,
+        "max": 22.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": true,
+      "queue_seconds": [
+        2,
+        8,
+        15
+      ],
+      "span": 3,
+      "message_gap_seconds": 3,
+      "observer_elapsed_seconds": 6.08516,
+      "mode": "topic_change",
+      "input_count": 30,
+      "fast_admitted": 9,
+      "needs_semantic_path": 21,
+      "first_semantic_path_at_seconds": 9,
+      "post_topic_change_fast_admitted": 2,
+      "simulated_observations": 14,
+      "completed_observations": 13,
+      "positive_foci": 4,
+      "queue_expired": 6,
+      "queue_dropped": 0,
+      "observed_focus_delay_seconds": {
+        "min": 10.0,
+        "max": 22.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": true,
+      "queue_seconds": [
+        2,
+        8,
+        15
+      ],
+      "span": 4,
+      "message_gap_seconds": 3,
+      "observer_elapsed_seconds": 6.08516,
+      "mode": "topic_change",
+      "input_count": 30,
+      "fast_admitted": 11,
+      "needs_semantic_path": 19,
+      "first_semantic_path_at_seconds": 15,
+      "post_topic_change_fast_admitted": 3,
+      "simulated_observations": 14,
+      "completed_observations": 13,
+      "positive_foci": 4,
+      "queue_expired": 6,
+      "queue_dropped": 0,
+      "observed_focus_delay_seconds": {
+        "min": 10.0,
+        "max": 22.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": true,
+      "queue_seconds": [
+        2,
+        8,
+        15
+      ],
+      "span": 6,
+      "message_gap_seconds": 3,
+      "observer_elapsed_seconds": 6.08516,
+      "mode": "topic_change",
+      "input_count": 30,
+      "fast_admitted": 15,
+      "needs_semantic_path": 15,
+      "first_semantic_path_at_seconds": 45,
+      "post_topic_change_fast_admitted": 5,
+      "simulated_observations": 14,
+      "completed_observations": 13,
+      "positive_foci": 4,
+      "queue_expired": 6,
+      "queue_dropped": 0,
+      "observed_focus_delay_seconds": {
+        "min": 10.0,
+        "max": 22.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": true,
+      "queue_seconds": [
+        2,
+        8,
+        15
+      ],
+      "span": 2,
+      "message_gap_seconds": 5,
+      "observer_elapsed_seconds": 6.08516,
+      "mode": "topic_change",
+      "input_count": 18,
+      "fast_admitted": 6,
+      "needs_semantic_path": 12,
+      "first_semantic_path_at_seconds": 10,
+      "post_topic_change_fast_admitted": 2,
+      "simulated_observations": 14,
+      "completed_observations": 13,
+      "positive_foci": 4,
+      "queue_expired": 2,
+      "queue_dropped": 0,
+      "observed_focus_delay_seconds": {
+        "min": 10.0,
+        "max": 31.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": true,
+      "queue_seconds": [
+        2,
+        8,
+        15
+      ],
+      "span": 3,
+      "message_gap_seconds": 5,
+      "observer_elapsed_seconds": 6.08516,
+      "mode": "topic_change",
+      "input_count": 18,
+      "fast_admitted": 8,
+      "needs_semantic_path": 10,
+      "first_semantic_path_at_seconds": 25,
+      "post_topic_change_fast_admitted": 3,
+      "simulated_observations": 14,
+      "completed_observations": 13,
+      "positive_foci": 4,
+      "queue_expired": 2,
+      "queue_dropped": 0,
+      "observed_focus_delay_seconds": {
+        "min": 10.0,
+        "max": 31.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": true,
+      "queue_seconds": [
+        2,
+        8,
+        15
+      ],
+      "span": 4,
+      "message_gap_seconds": 5,
+      "observer_elapsed_seconds": 6.08516,
+      "mode": "topic_change",
+      "input_count": 18,
+      "fast_admitted": 9,
+      "needs_semantic_path": 9,
+      "first_semantic_path_at_seconds": 45,
+      "post_topic_change_fast_admitted": 3,
+      "simulated_observations": 14,
+      "completed_observations": 13,
+      "positive_foci": 4,
+      "queue_expired": 2,
+      "queue_dropped": 0,
+      "observed_focus_delay_seconds": {
+        "min": 10.0,
+        "max": 31.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": true,
+      "queue_seconds": [
+        2,
+        8,
+        15
+      ],
+      "span": 6,
+      "message_gap_seconds": 5,
+      "observer_elapsed_seconds": 6.08516,
+      "mode": "topic_change",
+      "input_count": 18,
+      "fast_admitted": 9,
+      "needs_semantic_path": 9,
+      "first_semantic_path_at_seconds": 45,
+      "post_topic_change_fast_admitted": 3,
+      "simulated_observations": 14,
+      "completed_observations": 13,
+      "positive_foci": 4,
+      "queue_expired": 2,
+      "queue_dropped": 0,
+      "observed_focus_delay_seconds": {
+        "min": 10.0,
+        "max": 31.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": true,
+      "queue_seconds": [
+        2,
+        8,
+        15
+      ],
+      "span": 2,
+      "message_gap_seconds": 10,
+      "observer_elapsed_seconds": 6.08516,
+      "mode": "topic_change",
+      "input_count": 9,
+      "fast_admitted": 5,
+      "needs_semantic_path": 4,
+      "first_semantic_path_at_seconds": 50,
+      "post_topic_change_fast_admitted": 2,
+      "simulated_observations": 9,
+      "completed_observations": 9,
+      "positive_foci": 3,
+      "queue_expired": 0,
+      "queue_dropped": 0,
+      "observed_focus_delay_seconds": {
+        "min": 10.0,
+        "max": 10.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": true,
+      "queue_seconds": [
+        2,
+        8,
+        15
+      ],
+      "span": 3,
+      "message_gap_seconds": 10,
+      "observer_elapsed_seconds": 6.08516,
+      "mode": "topic_change",
+      "input_count": 9,
+      "fast_admitted": 5,
+      "needs_semantic_path": 4,
+      "first_semantic_path_at_seconds": 50,
+      "post_topic_change_fast_admitted": 2,
+      "simulated_observations": 9,
+      "completed_observations": 9,
+      "positive_foci": 3,
+      "queue_expired": 0,
+      "queue_dropped": 0,
+      "observed_focus_delay_seconds": {
+        "min": 10.0,
+        "max": 10.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": true,
+      "queue_seconds": [
+        2,
+        8,
+        15
+      ],
+      "span": 4,
+      "message_gap_seconds": 10,
+      "observer_elapsed_seconds": 6.08516,
+      "mode": "topic_change",
+      "input_count": 9,
+      "fast_admitted": 5,
+      "needs_semantic_path": 4,
+      "first_semantic_path_at_seconds": 50,
+      "post_topic_change_fast_admitted": 2,
+      "simulated_observations": 9,
+      "completed_observations": 9,
+      "positive_foci": 3,
+      "queue_expired": 0,
+      "queue_dropped": 0,
+      "observed_focus_delay_seconds": {
+        "min": 10.0,
+        "max": 10.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": true,
+      "queue_seconds": [
+        2,
+        8,
+        15
+      ],
+      "span": 6,
+      "message_gap_seconds": 10,
+      "observer_elapsed_seconds": 6.08516,
+      "mode": "topic_change",
+      "input_count": 9,
+      "fast_admitted": 5,
+      "needs_semantic_path": 4,
+      "first_semantic_path_at_seconds": 50,
+      "post_topic_change_fast_admitted": 2,
+      "simulated_observations": 9,
+      "completed_observations": 9,
+      "positive_foci": 3,
+      "queue_expired": 0,
+      "queue_dropped": 0,
+      "observed_focus_delay_seconds": {
+        "min": 10.0,
+        "max": 10.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": false,
+      "queue_seconds": [
+        3,
+        12,
+        20
+      ],
+      "span": 2,
+      "message_gap_seconds": 1,
+      "observer_elapsed_seconds": 6.002977,
+      "mode": "positive",
+      "input_count": 90,
+      "fast_admitted": 13,
+      "needs_semantic_path": 77,
+      "first_semantic_path_at_seconds": 2,
+      "post_topic_change_fast_admitted": 0,
+      "simulated_observations": 9,
+      "completed_observations": 9,
+      "positive_foci": 9,
+      "queue_expired": 15,
+      "queue_dropped": 18,
+      "observed_focus_delay_seconds": {
+        "min": 11.0,
+        "max": 19.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": false,
+      "queue_seconds": [
+        3,
+        12,
+        20
+      ],
+      "span": 3,
+      "message_gap_seconds": 1,
+      "observer_elapsed_seconds": 6.002977,
+      "mode": "positive",
+      "input_count": 90,
+      "fast_admitted": 17,
+      "needs_semantic_path": 73,
+      "first_semantic_path_at_seconds": 3,
+      "post_topic_change_fast_admitted": 0,
+      "simulated_observations": 9,
+      "completed_observations": 9,
+      "positive_foci": 9,
+      "queue_expired": 15,
+      "queue_dropped": 18,
+      "observed_focus_delay_seconds": {
+        "min": 11.0,
+        "max": 19.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": false,
+      "queue_seconds": [
+        3,
+        12,
+        20
+      ],
+      "span": 4,
+      "message_gap_seconds": 1,
+      "observer_elapsed_seconds": 6.002977,
+      "mode": "positive",
+      "input_count": 90,
+      "fast_admitted": 21,
+      "needs_semantic_path": 69,
+      "first_semantic_path_at_seconds": 4,
+      "post_topic_change_fast_admitted": 0,
+      "simulated_observations": 9,
+      "completed_observations": 9,
+      "positive_foci": 9,
+      "queue_expired": 15,
+      "queue_dropped": 18,
+      "observed_focus_delay_seconds": {
+        "min": 11.0,
+        "max": 19.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": false,
+      "queue_seconds": [
+        3,
+        12,
+        20
+      ],
+      "span": 6,
+      "message_gap_seconds": 1,
+      "observer_elapsed_seconds": 6.002977,
+      "mode": "positive",
+      "input_count": 90,
+      "fast_admitted": 29,
+      "needs_semantic_path": 61,
+      "first_semantic_path_at_seconds": 6,
+      "post_topic_change_fast_admitted": 0,
+      "simulated_observations": 9,
+      "completed_observations": 9,
+      "positive_foci": 9,
+      "queue_expired": 15,
+      "queue_dropped": 18,
+      "observed_focus_delay_seconds": {
+        "min": 11.0,
+        "max": 19.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": false,
+      "queue_seconds": [
+        3,
+        12,
+        20
+      ],
+      "span": 2,
+      "message_gap_seconds": 3,
+      "observer_elapsed_seconds": 6.002977,
+      "mode": "positive",
+      "input_count": 30,
+      "fast_admitted": 9,
+      "needs_semantic_path": 21,
+      "first_semantic_path_at_seconds": 6,
+      "post_topic_change_fast_admitted": 0,
+      "simulated_observations": 9,
+      "completed_observations": 9,
+      "positive_foci": 9,
+      "queue_expired": 9,
+      "queue_dropped": 0,
+      "observed_focus_delay_seconds": {
+        "min": 12.0,
+        "max": 21.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": false,
+      "queue_seconds": [
+        3,
+        12,
+        20
+      ],
+      "span": 3,
+      "message_gap_seconds": 3,
+      "observer_elapsed_seconds": 6.002977,
+      "mode": "positive",
+      "input_count": 30,
+      "fast_admitted": 13,
+      "needs_semantic_path": 17,
+      "first_semantic_path_at_seconds": 9,
+      "post_topic_change_fast_admitted": 0,
+      "simulated_observations": 9,
+      "completed_observations": 9,
+      "positive_foci": 9,
+      "queue_expired": 9,
+      "queue_dropped": 0,
+      "observed_focus_delay_seconds": {
+        "min": 12.0,
+        "max": 21.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": false,
+      "queue_seconds": [
+        3,
+        12,
+        20
+      ],
+      "span": 4,
+      "message_gap_seconds": 3,
+      "observer_elapsed_seconds": 6.002977,
+      "mode": "positive",
+      "input_count": 30,
+      "fast_admitted": 17,
+      "needs_semantic_path": 13,
+      "first_semantic_path_at_seconds": 12,
+      "post_topic_change_fast_admitted": 0,
+      "simulated_observations": 9,
+      "completed_observations": 9,
+      "positive_foci": 9,
+      "queue_expired": 9,
+      "queue_dropped": 0,
+      "observed_focus_delay_seconds": {
+        "min": 12.0,
+        "max": 21.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": false,
+      "queue_seconds": [
+        3,
+        12,
+        20
+      ],
+      "span": 6,
+      "message_gap_seconds": 3,
+      "observer_elapsed_seconds": 6.002977,
+      "mode": "positive",
+      "input_count": 30,
+      "fast_admitted": 24,
+      "needs_semantic_path": 6,
+      "first_semantic_path_at_seconds": 21,
+      "post_topic_change_fast_admitted": 0,
+      "simulated_observations": 9,
+      "completed_observations": 9,
+      "positive_foci": 9,
+      "queue_expired": 9,
+      "queue_dropped": 0,
+      "observed_focus_delay_seconds": {
+        "min": 12.0,
+        "max": 21.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": false,
+      "queue_seconds": [
+        3,
+        12,
+        20
+      ],
+      "span": 2,
+      "message_gap_seconds": 5,
+      "observer_elapsed_seconds": 6.002977,
+      "mode": "positive",
+      "input_count": 18,
+      "fast_admitted": 9,
+      "needs_semantic_path": 9,
+      "first_semantic_path_at_seconds": 10,
+      "post_topic_change_fast_admitted": 0,
+      "simulated_observations": 9,
+      "completed_observations": 9,
+      "positive_foci": 9,
+      "queue_expired": 4,
+      "queue_dropped": 0,
+      "observed_focus_delay_seconds": {
+        "min": 11.0,
+        "max": 28.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": false,
+      "queue_seconds": [
+        3,
+        12,
+        20
+      ],
+      "span": 3,
+      "message_gap_seconds": 5,
+      "observer_elapsed_seconds": 6.002977,
+      "mode": "positive",
+      "input_count": 18,
+      "fast_admitted": 13,
+      "needs_semantic_path": 5,
+      "first_semantic_path_at_seconds": 20,
+      "post_topic_change_fast_admitted": 0,
+      "simulated_observations": 9,
+      "completed_observations": 9,
+      "positive_foci": 9,
+      "queue_expired": 4,
+      "queue_dropped": 0,
+      "observed_focus_delay_seconds": {
+        "min": 11.0,
+        "max": 28.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": false,
+      "queue_seconds": [
+        3,
+        12,
+        20
+      ],
+      "span": 4,
+      "message_gap_seconds": 5,
+      "observer_elapsed_seconds": 6.002977,
+      "mode": "positive",
+      "input_count": 18,
+      "fast_admitted": 16,
+      "needs_semantic_path": 2,
+      "first_semantic_path_at_seconds": 35,
+      "post_topic_change_fast_admitted": 0,
+      "simulated_observations": 9,
+      "completed_observations": 9,
+      "positive_foci": 9,
+      "queue_expired": 4,
+      "queue_dropped": 0,
+      "observed_focus_delay_seconds": {
+        "min": 11.0,
+        "max": 28.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": false,
+      "queue_seconds": [
+        3,
+        12,
+        20
+      ],
+      "span": 6,
+      "message_gap_seconds": 5,
+      "observer_elapsed_seconds": 6.002977,
+      "mode": "positive",
+      "input_count": 18,
+      "fast_admitted": 18,
+      "needs_semantic_path": 0,
+      "first_semantic_path_at_seconds": null,
+      "post_topic_change_fast_admitted": 0,
+      "simulated_observations": 9,
+      "completed_observations": 9,
+      "positive_foci": 9,
+      "queue_expired": 4,
+      "queue_dropped": 0,
+      "observed_focus_delay_seconds": {
+        "min": 11.0,
+        "max": 28.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": false,
+      "queue_seconds": [
+        3,
+        12,
+        20
+      ],
+      "span": 2,
+      "message_gap_seconds": 10,
+      "observer_elapsed_seconds": 6.002977,
+      "mode": "positive",
+      "input_count": 9,
+      "fast_admitted": 8,
+      "needs_semantic_path": 1,
+      "first_semantic_path_at_seconds": 60,
+      "post_topic_change_fast_admitted": 0,
+      "simulated_observations": 9,
+      "completed_observations": 9,
+      "positive_foci": 9,
+      "queue_expired": 0,
+      "queue_dropped": 0,
+      "observed_focus_delay_seconds": {
+        "min": 12.0,
+        "max": 58.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": false,
+      "queue_seconds": [
+        3,
+        12,
+        20
+      ],
+      "span": 3,
+      "message_gap_seconds": 10,
+      "observer_elapsed_seconds": 6.002977,
+      "mode": "positive",
+      "input_count": 9,
+      "fast_admitted": 9,
+      "needs_semantic_path": 0,
+      "first_semantic_path_at_seconds": null,
+      "post_topic_change_fast_admitted": 0,
+      "simulated_observations": 9,
+      "completed_observations": 9,
+      "positive_foci": 9,
+      "queue_expired": 0,
+      "queue_dropped": 0,
+      "observed_focus_delay_seconds": {
+        "min": 12.0,
+        "max": 58.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": false,
+      "queue_seconds": [
+        3,
+        12,
+        20
+      ],
+      "span": 4,
+      "message_gap_seconds": 10,
+      "observer_elapsed_seconds": 6.002977,
+      "mode": "positive",
+      "input_count": 9,
+      "fast_admitted": 9,
+      "needs_semantic_path": 0,
+      "first_semantic_path_at_seconds": null,
+      "post_topic_change_fast_admitted": 0,
+      "simulated_observations": 9,
+      "completed_observations": 9,
+      "positive_foci": 9,
+      "queue_expired": 0,
+      "queue_dropped": 0,
+      "observed_focus_delay_seconds": {
+        "min": 12.0,
+        "max": 58.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": false,
+      "queue_seconds": [
+        3,
+        12,
+        20
+      ],
+      "span": 6,
+      "message_gap_seconds": 10,
+      "observer_elapsed_seconds": 6.002977,
+      "mode": "positive",
+      "input_count": 9,
+      "fast_admitted": 9,
+      "needs_semantic_path": 0,
+      "first_semantic_path_at_seconds": null,
+      "post_topic_change_fast_admitted": 0,
+      "simulated_observations": 9,
+      "completed_observations": 9,
+      "positive_foci": 9,
+      "queue_expired": 0,
+      "queue_dropped": 0,
+      "observed_focus_delay_seconds": {
+        "min": 12.0,
+        "max": 58.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": false,
+      "queue_seconds": [
+        3,
+        12,
+        20
+      ],
+      "span": 2,
+      "message_gap_seconds": 1,
+      "observer_elapsed_seconds": 6.002977,
+      "mode": "unknown",
+      "input_count": 90,
+      "fast_admitted": 2,
+      "needs_semantic_path": 88,
+      "first_semantic_path_at_seconds": 2,
+      "post_topic_change_fast_admitted": 0,
+      "simulated_observations": 9,
+      "completed_observations": 9,
+      "positive_foci": 0,
+      "queue_expired": 15,
+      "queue_dropped": 18,
+      "observed_focus_delay_seconds": {
+        "min": 11.0,
+        "max": 19.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": false,
+      "queue_seconds": [
+        3,
+        12,
+        20
+      ],
+      "span": 3,
+      "message_gap_seconds": 1,
+      "observer_elapsed_seconds": 6.002977,
+      "mode": "unknown",
+      "input_count": 90,
+      "fast_admitted": 3,
+      "needs_semantic_path": 87,
+      "first_semantic_path_at_seconds": 3,
+      "post_topic_change_fast_admitted": 0,
+      "simulated_observations": 9,
+      "completed_observations": 9,
+      "positive_foci": 0,
+      "queue_expired": 15,
+      "queue_dropped": 18,
+      "observed_focus_delay_seconds": {
+        "min": 11.0,
+        "max": 19.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": false,
+      "queue_seconds": [
+        3,
+        12,
+        20
+      ],
+      "span": 4,
+      "message_gap_seconds": 1,
+      "observer_elapsed_seconds": 6.002977,
+      "mode": "unknown",
+      "input_count": 90,
+      "fast_admitted": 4,
+      "needs_semantic_path": 86,
+      "first_semantic_path_at_seconds": 4,
+      "post_topic_change_fast_admitted": 0,
+      "simulated_observations": 9,
+      "completed_observations": 9,
+      "positive_foci": 0,
+      "queue_expired": 15,
+      "queue_dropped": 18,
+      "observed_focus_delay_seconds": {
+        "min": 11.0,
+        "max": 19.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": false,
+      "queue_seconds": [
+        3,
+        12,
+        20
+      ],
+      "span": 6,
+      "message_gap_seconds": 1,
+      "observer_elapsed_seconds": 6.002977,
+      "mode": "unknown",
+      "input_count": 90,
+      "fast_admitted": 6,
+      "needs_semantic_path": 84,
+      "first_semantic_path_at_seconds": 6,
+      "post_topic_change_fast_admitted": 0,
+      "simulated_observations": 9,
+      "completed_observations": 9,
+      "positive_foci": 0,
+      "queue_expired": 15,
+      "queue_dropped": 18,
+      "observed_focus_delay_seconds": {
+        "min": 11.0,
+        "max": 19.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": false,
+      "queue_seconds": [
+        3,
+        12,
+        20
+      ],
+      "span": 2,
+      "message_gap_seconds": 3,
+      "observer_elapsed_seconds": 6.002977,
+      "mode": "unknown",
+      "input_count": 30,
+      "fast_admitted": 2,
+      "needs_semantic_path": 28,
+      "first_semantic_path_at_seconds": 6,
+      "post_topic_change_fast_admitted": 0,
+      "simulated_observations": 9,
+      "completed_observations": 9,
+      "positive_foci": 0,
+      "queue_expired": 9,
+      "queue_dropped": 0,
+      "observed_focus_delay_seconds": {
+        "min": 12.0,
+        "max": 21.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": false,
+      "queue_seconds": [
+        3,
+        12,
+        20
+      ],
+      "span": 3,
+      "message_gap_seconds": 3,
+      "observer_elapsed_seconds": 6.002977,
+      "mode": "unknown",
+      "input_count": 30,
+      "fast_admitted": 3,
+      "needs_semantic_path": 27,
+      "first_semantic_path_at_seconds": 9,
+      "post_topic_change_fast_admitted": 0,
+      "simulated_observations": 9,
+      "completed_observations": 9,
+      "positive_foci": 0,
+      "queue_expired": 9,
+      "queue_dropped": 0,
+      "observed_focus_delay_seconds": {
+        "min": 12.0,
+        "max": 21.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": false,
+      "queue_seconds": [
+        3,
+        12,
+        20
+      ],
+      "span": 4,
+      "message_gap_seconds": 3,
+      "observer_elapsed_seconds": 6.002977,
+      "mode": "unknown",
+      "input_count": 30,
+      "fast_admitted": 4,
+      "needs_semantic_path": 26,
+      "first_semantic_path_at_seconds": 12,
+      "post_topic_change_fast_admitted": 0,
+      "simulated_observations": 9,
+      "completed_observations": 9,
+      "positive_foci": 0,
+      "queue_expired": 9,
+      "queue_dropped": 0,
+      "observed_focus_delay_seconds": {
+        "min": 12.0,
+        "max": 21.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": false,
+      "queue_seconds": [
+        3,
+        12,
+        20
+      ],
+      "span": 6,
+      "message_gap_seconds": 3,
+      "observer_elapsed_seconds": 6.002977,
+      "mode": "unknown",
+      "input_count": 30,
+      "fast_admitted": 6,
+      "needs_semantic_path": 24,
+      "first_semantic_path_at_seconds": 18,
+      "post_topic_change_fast_admitted": 0,
+      "simulated_observations": 9,
+      "completed_observations": 9,
+      "positive_foci": 0,
+      "queue_expired": 9,
+      "queue_dropped": 0,
+      "observed_focus_delay_seconds": {
+        "min": 12.0,
+        "max": 21.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": false,
+      "queue_seconds": [
+        3,
+        12,
+        20
+      ],
+      "span": 2,
+      "message_gap_seconds": 5,
+      "observer_elapsed_seconds": 6.002977,
+      "mode": "unknown",
+      "input_count": 18,
+      "fast_admitted": 2,
+      "needs_semantic_path": 16,
+      "first_semantic_path_at_seconds": 10,
+      "post_topic_change_fast_admitted": 0,
+      "simulated_observations": 9,
+      "completed_observations": 9,
+      "positive_foci": 0,
+      "queue_expired": 4,
+      "queue_dropped": 0,
+      "observed_focus_delay_seconds": {
+        "min": 11.0,
+        "max": 28.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": false,
+      "queue_seconds": [
+        3,
+        12,
+        20
+      ],
+      "span": 3,
+      "message_gap_seconds": 5,
+      "observer_elapsed_seconds": 6.002977,
+      "mode": "unknown",
+      "input_count": 18,
+      "fast_admitted": 3,
+      "needs_semantic_path": 15,
+      "first_semantic_path_at_seconds": 15,
+      "post_topic_change_fast_admitted": 0,
+      "simulated_observations": 9,
+      "completed_observations": 9,
+      "positive_foci": 0,
+      "queue_expired": 4,
+      "queue_dropped": 0,
+      "observed_focus_delay_seconds": {
+        "min": 11.0,
+        "max": 28.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": false,
+      "queue_seconds": [
+        3,
+        12,
+        20
+      ],
+      "span": 4,
+      "message_gap_seconds": 5,
+      "observer_elapsed_seconds": 6.002977,
+      "mode": "unknown",
+      "input_count": 18,
+      "fast_admitted": 4,
+      "needs_semantic_path": 14,
+      "first_semantic_path_at_seconds": 20,
+      "post_topic_change_fast_admitted": 0,
+      "simulated_observations": 9,
+      "completed_observations": 9,
+      "positive_foci": 0,
+      "queue_expired": 4,
+      "queue_dropped": 0,
+      "observed_focus_delay_seconds": {
+        "min": 11.0,
+        "max": 28.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": false,
+      "queue_seconds": [
+        3,
+        12,
+        20
+      ],
+      "span": 6,
+      "message_gap_seconds": 5,
+      "observer_elapsed_seconds": 6.002977,
+      "mode": "unknown",
+      "input_count": 18,
+      "fast_admitted": 6,
+      "needs_semantic_path": 12,
+      "first_semantic_path_at_seconds": 30,
+      "post_topic_change_fast_admitted": 0,
+      "simulated_observations": 9,
+      "completed_observations": 9,
+      "positive_foci": 0,
+      "queue_expired": 4,
+      "queue_dropped": 0,
+      "observed_focus_delay_seconds": {
+        "min": 11.0,
+        "max": 28.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": false,
+      "queue_seconds": [
+        3,
+        12,
+        20
+      ],
+      "span": 2,
+      "message_gap_seconds": 10,
+      "observer_elapsed_seconds": 6.002977,
+      "mode": "unknown",
+      "input_count": 9,
+      "fast_admitted": 2,
+      "needs_semantic_path": 7,
+      "first_semantic_path_at_seconds": 20,
+      "post_topic_change_fast_admitted": 0,
+      "simulated_observations": 9,
+      "completed_observations": 9,
+      "positive_foci": 0,
+      "queue_expired": 0,
+      "queue_dropped": 0,
+      "observed_focus_delay_seconds": {
+        "min": 12.0,
+        "max": 58.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": false,
+      "queue_seconds": [
+        3,
+        12,
+        20
+      ],
+      "span": 3,
+      "message_gap_seconds": 10,
+      "observer_elapsed_seconds": 6.002977,
+      "mode": "unknown",
+      "input_count": 9,
+      "fast_admitted": 3,
+      "needs_semantic_path": 6,
+      "first_semantic_path_at_seconds": 30,
+      "post_topic_change_fast_admitted": 0,
+      "simulated_observations": 9,
+      "completed_observations": 9,
+      "positive_foci": 0,
+      "queue_expired": 0,
+      "queue_dropped": 0,
+      "observed_focus_delay_seconds": {
+        "min": 12.0,
+        "max": 58.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": false,
+      "queue_seconds": [
+        3,
+        12,
+        20
+      ],
+      "span": 4,
+      "message_gap_seconds": 10,
+      "observer_elapsed_seconds": 6.002977,
+      "mode": "unknown",
+      "input_count": 9,
+      "fast_admitted": 4,
+      "needs_semantic_path": 5,
+      "first_semantic_path_at_seconds": 40,
+      "post_topic_change_fast_admitted": 0,
+      "simulated_observations": 9,
+      "completed_observations": 9,
+      "positive_foci": 0,
+      "queue_expired": 0,
+      "queue_dropped": 0,
+      "observed_focus_delay_seconds": {
+        "min": 12.0,
+        "max": 58.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": false,
+      "queue_seconds": [
+        3,
+        12,
+        20
+      ],
+      "span": 6,
+      "message_gap_seconds": 10,
+      "observer_elapsed_seconds": 6.002977,
+      "mode": "unknown",
+      "input_count": 9,
+      "fast_admitted": 6,
+      "needs_semantic_path": 3,
+      "first_semantic_path_at_seconds": 60,
+      "post_topic_change_fast_admitted": 0,
+      "simulated_observations": 9,
+      "completed_observations": 9,
+      "positive_foci": 0,
+      "queue_expired": 0,
+      "queue_dropped": 0,
+      "observed_focus_delay_seconds": {
+        "min": 12.0,
+        "max": 58.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": false,
+      "queue_seconds": [
+        3,
+        12,
+        20
+      ],
+      "span": 2,
+      "message_gap_seconds": 1,
+      "observer_elapsed_seconds": 6.002977,
+      "mode": "topic_change",
+      "input_count": 90,
+      "fast_admitted": 7,
+      "needs_semantic_path": 83,
+      "first_semantic_path_at_seconds": 2,
+      "post_topic_change_fast_admitted": 2,
+      "simulated_observations": 9,
+      "completed_observations": 9,
+      "positive_foci": 3,
+      "queue_expired": 15,
+      "queue_dropped": 18,
+      "observed_focus_delay_seconds": {
+        "min": 11.0,
+        "max": 19.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": false,
+      "queue_seconds": [
+        3,
+        12,
+        20
+      ],
+      "span": 3,
+      "message_gap_seconds": 1,
+      "observer_elapsed_seconds": 6.002977,
+      "mode": "topic_change",
+      "input_count": 90,
+      "fast_admitted": 9,
+      "needs_semantic_path": 81,
+      "first_semantic_path_at_seconds": 3,
+      "post_topic_change_fast_admitted": 2,
+      "simulated_observations": 9,
+      "completed_observations": 9,
+      "positive_foci": 3,
+      "queue_expired": 15,
+      "queue_dropped": 18,
+      "observed_focus_delay_seconds": {
+        "min": 11.0,
+        "max": 19.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": false,
+      "queue_seconds": [
+        3,
+        12,
+        20
+      ],
+      "span": 4,
+      "message_gap_seconds": 1,
+      "observer_elapsed_seconds": 6.002977,
+      "mode": "topic_change",
+      "input_count": 90,
+      "fast_admitted": 11,
+      "needs_semantic_path": 79,
+      "first_semantic_path_at_seconds": 4,
+      "post_topic_change_fast_admitted": 2,
+      "simulated_observations": 9,
+      "completed_observations": 9,
+      "positive_foci": 3,
+      "queue_expired": 15,
+      "queue_dropped": 18,
+      "observed_focus_delay_seconds": {
+        "min": 11.0,
+        "max": 19.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": false,
+      "queue_seconds": [
+        3,
+        12,
+        20
+      ],
+      "span": 6,
+      "message_gap_seconds": 1,
+      "observer_elapsed_seconds": 6.002977,
+      "mode": "topic_change",
+      "input_count": 90,
+      "fast_admitted": 15,
+      "needs_semantic_path": 75,
+      "first_semantic_path_at_seconds": 6,
+      "post_topic_change_fast_admitted": 2,
+      "simulated_observations": 9,
+      "completed_observations": 9,
+      "positive_foci": 3,
+      "queue_expired": 15,
+      "queue_dropped": 18,
+      "observed_focus_delay_seconds": {
+        "min": 11.0,
+        "max": 19.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": false,
+      "queue_seconds": [
+        3,
+        12,
+        20
+      ],
+      "span": 2,
+      "message_gap_seconds": 3,
+      "observer_elapsed_seconds": 6.002977,
+      "mode": "topic_change",
+      "input_count": 30,
+      "fast_admitted": 5,
+      "needs_semantic_path": 25,
+      "first_semantic_path_at_seconds": 6,
+      "post_topic_change_fast_admitted": 1,
+      "simulated_observations": 9,
+      "completed_observations": 9,
+      "positive_foci": 3,
+      "queue_expired": 9,
+      "queue_dropped": 0,
+      "observed_focus_delay_seconds": {
+        "min": 12.0,
+        "max": 21.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": false,
+      "queue_seconds": [
+        3,
+        12,
+        20
+      ],
+      "span": 3,
+      "message_gap_seconds": 3,
+      "observer_elapsed_seconds": 6.002977,
+      "mode": "topic_change",
+      "input_count": 30,
+      "fast_admitted": 7,
+      "needs_semantic_path": 23,
+      "first_semantic_path_at_seconds": 9,
+      "post_topic_change_fast_admitted": 2,
+      "simulated_observations": 9,
+      "completed_observations": 9,
+      "positive_foci": 3,
+      "queue_expired": 9,
+      "queue_dropped": 0,
+      "observed_focus_delay_seconds": {
+        "min": 12.0,
+        "max": 21.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": false,
+      "queue_seconds": [
+        3,
+        12,
+        20
+      ],
+      "span": 4,
+      "message_gap_seconds": 3,
+      "observer_elapsed_seconds": 6.002977,
+      "mode": "topic_change",
+      "input_count": 30,
+      "fast_admitted": 9,
+      "needs_semantic_path": 21,
+      "first_semantic_path_at_seconds": 12,
+      "post_topic_change_fast_admitted": 3,
+      "simulated_observations": 9,
+      "completed_observations": 9,
+      "positive_foci": 3,
+      "queue_expired": 9,
+      "queue_dropped": 0,
+      "observed_focus_delay_seconds": {
+        "min": 12.0,
+        "max": 21.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": false,
+      "queue_seconds": [
+        3,
+        12,
+        20
+      ],
+      "span": 6,
+      "message_gap_seconds": 3,
+      "observer_elapsed_seconds": 6.002977,
+      "mode": "topic_change",
+      "input_count": 30,
+      "fast_admitted": 13,
+      "needs_semantic_path": 17,
+      "first_semantic_path_at_seconds": 21,
+      "post_topic_change_fast_admitted": 5,
+      "simulated_observations": 9,
+      "completed_observations": 9,
+      "positive_foci": 3,
+      "queue_expired": 9,
+      "queue_dropped": 0,
+      "observed_focus_delay_seconds": {
+        "min": 12.0,
+        "max": 21.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": false,
+      "queue_seconds": [
+        3,
+        12,
+        20
+      ],
+      "span": 2,
+      "message_gap_seconds": 5,
+      "observer_elapsed_seconds": 6.002977,
+      "mode": "topic_change",
+      "input_count": 18,
+      "fast_admitted": 6,
+      "needs_semantic_path": 12,
+      "first_semantic_path_at_seconds": 10,
+      "post_topic_change_fast_admitted": 2,
+      "simulated_observations": 9,
+      "completed_observations": 9,
+      "positive_foci": 3,
+      "queue_expired": 4,
+      "queue_dropped": 0,
+      "observed_focus_delay_seconds": {
+        "min": 11.0,
+        "max": 28.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": false,
+      "queue_seconds": [
+        3,
+        12,
+        20
+      ],
+      "span": 3,
+      "message_gap_seconds": 5,
+      "observer_elapsed_seconds": 6.002977,
+      "mode": "topic_change",
+      "input_count": 18,
+      "fast_admitted": 8,
+      "needs_semantic_path": 10,
+      "first_semantic_path_at_seconds": 20,
+      "post_topic_change_fast_admitted": 3,
+      "simulated_observations": 9,
+      "completed_observations": 9,
+      "positive_foci": 3,
+      "queue_expired": 4,
+      "queue_dropped": 0,
+      "observed_focus_delay_seconds": {
+        "min": 11.0,
+        "max": 28.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": false,
+      "queue_seconds": [
+        3,
+        12,
+        20
+      ],
+      "span": 4,
+      "message_gap_seconds": 5,
+      "observer_elapsed_seconds": 6.002977,
+      "mode": "topic_change",
+      "input_count": 18,
+      "fast_admitted": 9,
+      "needs_semantic_path": 9,
+      "first_semantic_path_at_seconds": 35,
+      "post_topic_change_fast_admitted": 3,
+      "simulated_observations": 9,
+      "completed_observations": 9,
+      "positive_foci": 3,
+      "queue_expired": 4,
+      "queue_dropped": 0,
+      "observed_focus_delay_seconds": {
+        "min": 11.0,
+        "max": 28.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": false,
+      "queue_seconds": [
+        3,
+        12,
+        20
+      ],
+      "span": 6,
+      "message_gap_seconds": 5,
+      "observer_elapsed_seconds": 6.002977,
+      "mode": "topic_change",
+      "input_count": 18,
+      "fast_admitted": 10,
+      "needs_semantic_path": 8,
+      "first_semantic_path_at_seconds": 50,
+      "post_topic_change_fast_admitted": 4,
+      "simulated_observations": 9,
+      "completed_observations": 9,
+      "positive_foci": 3,
+      "queue_expired": 4,
+      "queue_dropped": 0,
+      "observed_focus_delay_seconds": {
+        "min": 11.0,
+        "max": 28.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": false,
+      "queue_seconds": [
+        3,
+        12,
+        20
+      ],
+      "span": 2,
+      "message_gap_seconds": 10,
+      "observer_elapsed_seconds": 6.002977,
+      "mode": "topic_change",
+      "input_count": 9,
+      "fast_admitted": 5,
+      "needs_semantic_path": 4,
+      "first_semantic_path_at_seconds": 50,
+      "post_topic_change_fast_admitted": 2,
+      "simulated_observations": 9,
+      "completed_observations": 9,
+      "positive_foci": 3,
+      "queue_expired": 0,
+      "queue_dropped": 0,
+      "observed_focus_delay_seconds": {
+        "min": 12.0,
+        "max": 58.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": false,
+      "queue_seconds": [
+        3,
+        12,
+        20
+      ],
+      "span": 3,
+      "message_gap_seconds": 10,
+      "observer_elapsed_seconds": 6.002977,
+      "mode": "topic_change",
+      "input_count": 9,
+      "fast_admitted": 5,
+      "needs_semantic_path": 4,
+      "first_semantic_path_at_seconds": 50,
+      "post_topic_change_fast_admitted": 2,
+      "simulated_observations": 9,
+      "completed_observations": 9,
+      "positive_foci": 3,
+      "queue_expired": 0,
+      "queue_dropped": 0,
+      "observed_focus_delay_seconds": {
+        "min": 12.0,
+        "max": 58.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": false,
+      "queue_seconds": [
+        3,
+        12,
+        20
+      ],
+      "span": 4,
+      "message_gap_seconds": 10,
+      "observer_elapsed_seconds": 6.002977,
+      "mode": "topic_change",
+      "input_count": 9,
+      "fast_admitted": 5,
+      "needs_semantic_path": 4,
+      "first_semantic_path_at_seconds": 50,
+      "post_topic_change_fast_admitted": 2,
+      "simulated_observations": 9,
+      "completed_observations": 9,
+      "positive_foci": 3,
+      "queue_expired": 0,
+      "queue_dropped": 0,
+      "observed_focus_delay_seconds": {
+        "min": 12.0,
+        "max": 58.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": false,
+      "queue_seconds": [
+        3,
+        12,
+        20
+      ],
+      "span": 6,
+      "message_gap_seconds": 10,
+      "observer_elapsed_seconds": 6.002977,
+      "mode": "topic_change",
+      "input_count": 9,
+      "fast_admitted": 5,
+      "needs_semantic_path": 4,
+      "first_semantic_path_at_seconds": 50,
+      "post_topic_change_fast_admitted": 2,
+      "simulated_observations": 9,
+      "completed_observations": 9,
+      "positive_foci": 3,
+      "queue_expired": 0,
+      "queue_dropped": 0,
+      "observed_focus_delay_seconds": {
+        "min": 12.0,
+        "max": 58.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": false,
+      "queue_seconds": [
+        3,
+        12,
+        20
+      ],
+      "span": 2,
+      "message_gap_seconds": 1,
+      "observer_elapsed_seconds": 6.08516,
+      "mode": "positive",
+      "input_count": 90,
+      "fast_admitted": 13,
+      "needs_semantic_path": 77,
+      "first_semantic_path_at_seconds": 2,
+      "post_topic_change_fast_admitted": 0,
+      "simulated_observations": 9,
+      "completed_observations": 9,
+      "positive_foci": 9,
+      "queue_expired": 15,
+      "queue_dropped": 18,
+      "observed_focus_delay_seconds": {
+        "min": 11.0,
+        "max": 19.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": false,
+      "queue_seconds": [
+        3,
+        12,
+        20
+      ],
+      "span": 3,
+      "message_gap_seconds": 1,
+      "observer_elapsed_seconds": 6.08516,
+      "mode": "positive",
+      "input_count": 90,
+      "fast_admitted": 17,
+      "needs_semantic_path": 73,
+      "first_semantic_path_at_seconds": 3,
+      "post_topic_change_fast_admitted": 0,
+      "simulated_observations": 9,
+      "completed_observations": 9,
+      "positive_foci": 9,
+      "queue_expired": 15,
+      "queue_dropped": 18,
+      "observed_focus_delay_seconds": {
+        "min": 11.0,
+        "max": 19.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": false,
+      "queue_seconds": [
+        3,
+        12,
+        20
+      ],
+      "span": 4,
+      "message_gap_seconds": 1,
+      "observer_elapsed_seconds": 6.08516,
+      "mode": "positive",
+      "input_count": 90,
+      "fast_admitted": 21,
+      "needs_semantic_path": 69,
+      "first_semantic_path_at_seconds": 4,
+      "post_topic_change_fast_admitted": 0,
+      "simulated_observations": 9,
+      "completed_observations": 9,
+      "positive_foci": 9,
+      "queue_expired": 15,
+      "queue_dropped": 18,
+      "observed_focus_delay_seconds": {
+        "min": 11.0,
+        "max": 19.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": false,
+      "queue_seconds": [
+        3,
+        12,
+        20
+      ],
+      "span": 6,
+      "message_gap_seconds": 1,
+      "observer_elapsed_seconds": 6.08516,
+      "mode": "positive",
+      "input_count": 90,
+      "fast_admitted": 29,
+      "needs_semantic_path": 61,
+      "first_semantic_path_at_seconds": 6,
+      "post_topic_change_fast_admitted": 0,
+      "simulated_observations": 9,
+      "completed_observations": 9,
+      "positive_foci": 9,
+      "queue_expired": 15,
+      "queue_dropped": 18,
+      "observed_focus_delay_seconds": {
+        "min": 11.0,
+        "max": 19.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": false,
+      "queue_seconds": [
+        3,
+        12,
+        20
+      ],
+      "span": 2,
+      "message_gap_seconds": 3,
+      "observer_elapsed_seconds": 6.08516,
+      "mode": "positive",
+      "input_count": 30,
+      "fast_admitted": 9,
+      "needs_semantic_path": 21,
+      "first_semantic_path_at_seconds": 6,
+      "post_topic_change_fast_admitted": 0,
+      "simulated_observations": 9,
+      "completed_observations": 9,
+      "positive_foci": 9,
+      "queue_expired": 9,
+      "queue_dropped": 0,
+      "observed_focus_delay_seconds": {
+        "min": 12.0,
+        "max": 21.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": false,
+      "queue_seconds": [
+        3,
+        12,
+        20
+      ],
+      "span": 3,
+      "message_gap_seconds": 3,
+      "observer_elapsed_seconds": 6.08516,
+      "mode": "positive",
+      "input_count": 30,
+      "fast_admitted": 13,
+      "needs_semantic_path": 17,
+      "first_semantic_path_at_seconds": 9,
+      "post_topic_change_fast_admitted": 0,
+      "simulated_observations": 9,
+      "completed_observations": 9,
+      "positive_foci": 9,
+      "queue_expired": 9,
+      "queue_dropped": 0,
+      "observed_focus_delay_seconds": {
+        "min": 12.0,
+        "max": 21.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": false,
+      "queue_seconds": [
+        3,
+        12,
+        20
+      ],
+      "span": 4,
+      "message_gap_seconds": 3,
+      "observer_elapsed_seconds": 6.08516,
+      "mode": "positive",
+      "input_count": 30,
+      "fast_admitted": 17,
+      "needs_semantic_path": 13,
+      "first_semantic_path_at_seconds": 12,
+      "post_topic_change_fast_admitted": 0,
+      "simulated_observations": 9,
+      "completed_observations": 9,
+      "positive_foci": 9,
+      "queue_expired": 9,
+      "queue_dropped": 0,
+      "observed_focus_delay_seconds": {
+        "min": 12.0,
+        "max": 21.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": false,
+      "queue_seconds": [
+        3,
+        12,
+        20
+      ],
+      "span": 6,
+      "message_gap_seconds": 3,
+      "observer_elapsed_seconds": 6.08516,
+      "mode": "positive",
+      "input_count": 30,
+      "fast_admitted": 24,
+      "needs_semantic_path": 6,
+      "first_semantic_path_at_seconds": 21,
+      "post_topic_change_fast_admitted": 0,
+      "simulated_observations": 9,
+      "completed_observations": 9,
+      "positive_foci": 9,
+      "queue_expired": 9,
+      "queue_dropped": 0,
+      "observed_focus_delay_seconds": {
+        "min": 12.0,
+        "max": 21.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": false,
+      "queue_seconds": [
+        3,
+        12,
+        20
+      ],
+      "span": 2,
+      "message_gap_seconds": 5,
+      "observer_elapsed_seconds": 6.08516,
+      "mode": "positive",
+      "input_count": 18,
+      "fast_admitted": 9,
+      "needs_semantic_path": 9,
+      "first_semantic_path_at_seconds": 10,
+      "post_topic_change_fast_admitted": 0,
+      "simulated_observations": 9,
+      "completed_observations": 9,
+      "positive_foci": 9,
+      "queue_expired": 4,
+      "queue_dropped": 0,
+      "observed_focus_delay_seconds": {
+        "min": 11.0,
+        "max": 28.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": false,
+      "queue_seconds": [
+        3,
+        12,
+        20
+      ],
+      "span": 3,
+      "message_gap_seconds": 5,
+      "observer_elapsed_seconds": 6.08516,
+      "mode": "positive",
+      "input_count": 18,
+      "fast_admitted": 13,
+      "needs_semantic_path": 5,
+      "first_semantic_path_at_seconds": 20,
+      "post_topic_change_fast_admitted": 0,
+      "simulated_observations": 9,
+      "completed_observations": 9,
+      "positive_foci": 9,
+      "queue_expired": 4,
+      "queue_dropped": 0,
+      "observed_focus_delay_seconds": {
+        "min": 11.0,
+        "max": 28.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": false,
+      "queue_seconds": [
+        3,
+        12,
+        20
+      ],
+      "span": 4,
+      "message_gap_seconds": 5,
+      "observer_elapsed_seconds": 6.08516,
+      "mode": "positive",
+      "input_count": 18,
+      "fast_admitted": 16,
+      "needs_semantic_path": 2,
+      "first_semantic_path_at_seconds": 35,
+      "post_topic_change_fast_admitted": 0,
+      "simulated_observations": 9,
+      "completed_observations": 9,
+      "positive_foci": 9,
+      "queue_expired": 4,
+      "queue_dropped": 0,
+      "observed_focus_delay_seconds": {
+        "min": 11.0,
+        "max": 28.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": false,
+      "queue_seconds": [
+        3,
+        12,
+        20
+      ],
+      "span": 6,
+      "message_gap_seconds": 5,
+      "observer_elapsed_seconds": 6.08516,
+      "mode": "positive",
+      "input_count": 18,
+      "fast_admitted": 18,
+      "needs_semantic_path": 0,
+      "first_semantic_path_at_seconds": null,
+      "post_topic_change_fast_admitted": 0,
+      "simulated_observations": 9,
+      "completed_observations": 9,
+      "positive_foci": 9,
+      "queue_expired": 4,
+      "queue_dropped": 0,
+      "observed_focus_delay_seconds": {
+        "min": 11.0,
+        "max": 28.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": false,
+      "queue_seconds": [
+        3,
+        12,
+        20
+      ],
+      "span": 2,
+      "message_gap_seconds": 10,
+      "observer_elapsed_seconds": 6.08516,
+      "mode": "positive",
+      "input_count": 9,
+      "fast_admitted": 8,
+      "needs_semantic_path": 1,
+      "first_semantic_path_at_seconds": 60,
+      "post_topic_change_fast_admitted": 0,
+      "simulated_observations": 9,
+      "completed_observations": 9,
+      "positive_foci": 9,
+      "queue_expired": 0,
+      "queue_dropped": 0,
+      "observed_focus_delay_seconds": {
+        "min": 12.0,
+        "max": 58.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": false,
+      "queue_seconds": [
+        3,
+        12,
+        20
+      ],
+      "span": 3,
+      "message_gap_seconds": 10,
+      "observer_elapsed_seconds": 6.08516,
+      "mode": "positive",
+      "input_count": 9,
+      "fast_admitted": 9,
+      "needs_semantic_path": 0,
+      "first_semantic_path_at_seconds": null,
+      "post_topic_change_fast_admitted": 0,
+      "simulated_observations": 9,
+      "completed_observations": 9,
+      "positive_foci": 9,
+      "queue_expired": 0,
+      "queue_dropped": 0,
+      "observed_focus_delay_seconds": {
+        "min": 12.0,
+        "max": 58.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": false,
+      "queue_seconds": [
+        3,
+        12,
+        20
+      ],
+      "span": 4,
+      "message_gap_seconds": 10,
+      "observer_elapsed_seconds": 6.08516,
+      "mode": "positive",
+      "input_count": 9,
+      "fast_admitted": 9,
+      "needs_semantic_path": 0,
+      "first_semantic_path_at_seconds": null,
+      "post_topic_change_fast_admitted": 0,
+      "simulated_observations": 9,
+      "completed_observations": 9,
+      "positive_foci": 9,
+      "queue_expired": 0,
+      "queue_dropped": 0,
+      "observed_focus_delay_seconds": {
+        "min": 12.0,
+        "max": 58.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": false,
+      "queue_seconds": [
+        3,
+        12,
+        20
+      ],
+      "span": 6,
+      "message_gap_seconds": 10,
+      "observer_elapsed_seconds": 6.08516,
+      "mode": "positive",
+      "input_count": 9,
+      "fast_admitted": 9,
+      "needs_semantic_path": 0,
+      "first_semantic_path_at_seconds": null,
+      "post_topic_change_fast_admitted": 0,
+      "simulated_observations": 9,
+      "completed_observations": 9,
+      "positive_foci": 9,
+      "queue_expired": 0,
+      "queue_dropped": 0,
+      "observed_focus_delay_seconds": {
+        "min": 12.0,
+        "max": 58.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": false,
+      "queue_seconds": [
+        3,
+        12,
+        20
+      ],
+      "span": 2,
+      "message_gap_seconds": 1,
+      "observer_elapsed_seconds": 6.08516,
+      "mode": "unknown",
+      "input_count": 90,
+      "fast_admitted": 2,
+      "needs_semantic_path": 88,
+      "first_semantic_path_at_seconds": 2,
+      "post_topic_change_fast_admitted": 0,
+      "simulated_observations": 9,
+      "completed_observations": 9,
+      "positive_foci": 0,
+      "queue_expired": 15,
+      "queue_dropped": 18,
+      "observed_focus_delay_seconds": {
+        "min": 11.0,
+        "max": 19.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": false,
+      "queue_seconds": [
+        3,
+        12,
+        20
+      ],
+      "span": 3,
+      "message_gap_seconds": 1,
+      "observer_elapsed_seconds": 6.08516,
+      "mode": "unknown",
+      "input_count": 90,
+      "fast_admitted": 3,
+      "needs_semantic_path": 87,
+      "first_semantic_path_at_seconds": 3,
+      "post_topic_change_fast_admitted": 0,
+      "simulated_observations": 9,
+      "completed_observations": 9,
+      "positive_foci": 0,
+      "queue_expired": 15,
+      "queue_dropped": 18,
+      "observed_focus_delay_seconds": {
+        "min": 11.0,
+        "max": 19.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": false,
+      "queue_seconds": [
+        3,
+        12,
+        20
+      ],
+      "span": 4,
+      "message_gap_seconds": 1,
+      "observer_elapsed_seconds": 6.08516,
+      "mode": "unknown",
+      "input_count": 90,
+      "fast_admitted": 4,
+      "needs_semantic_path": 86,
+      "first_semantic_path_at_seconds": 4,
+      "post_topic_change_fast_admitted": 0,
+      "simulated_observations": 9,
+      "completed_observations": 9,
+      "positive_foci": 0,
+      "queue_expired": 15,
+      "queue_dropped": 18,
+      "observed_focus_delay_seconds": {
+        "min": 11.0,
+        "max": 19.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": false,
+      "queue_seconds": [
+        3,
+        12,
+        20
+      ],
+      "span": 6,
+      "message_gap_seconds": 1,
+      "observer_elapsed_seconds": 6.08516,
+      "mode": "unknown",
+      "input_count": 90,
+      "fast_admitted": 6,
+      "needs_semantic_path": 84,
+      "first_semantic_path_at_seconds": 6,
+      "post_topic_change_fast_admitted": 0,
+      "simulated_observations": 9,
+      "completed_observations": 9,
+      "positive_foci": 0,
+      "queue_expired": 15,
+      "queue_dropped": 18,
+      "observed_focus_delay_seconds": {
+        "min": 11.0,
+        "max": 19.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": false,
+      "queue_seconds": [
+        3,
+        12,
+        20
+      ],
+      "span": 2,
+      "message_gap_seconds": 3,
+      "observer_elapsed_seconds": 6.08516,
+      "mode": "unknown",
+      "input_count": 30,
+      "fast_admitted": 2,
+      "needs_semantic_path": 28,
+      "first_semantic_path_at_seconds": 6,
+      "post_topic_change_fast_admitted": 0,
+      "simulated_observations": 9,
+      "completed_observations": 9,
+      "positive_foci": 0,
+      "queue_expired": 9,
+      "queue_dropped": 0,
+      "observed_focus_delay_seconds": {
+        "min": 12.0,
+        "max": 21.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": false,
+      "queue_seconds": [
+        3,
+        12,
+        20
+      ],
+      "span": 3,
+      "message_gap_seconds": 3,
+      "observer_elapsed_seconds": 6.08516,
+      "mode": "unknown",
+      "input_count": 30,
+      "fast_admitted": 3,
+      "needs_semantic_path": 27,
+      "first_semantic_path_at_seconds": 9,
+      "post_topic_change_fast_admitted": 0,
+      "simulated_observations": 9,
+      "completed_observations": 9,
+      "positive_foci": 0,
+      "queue_expired": 9,
+      "queue_dropped": 0,
+      "observed_focus_delay_seconds": {
+        "min": 12.0,
+        "max": 21.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": false,
+      "queue_seconds": [
+        3,
+        12,
+        20
+      ],
+      "span": 4,
+      "message_gap_seconds": 3,
+      "observer_elapsed_seconds": 6.08516,
+      "mode": "unknown",
+      "input_count": 30,
+      "fast_admitted": 4,
+      "needs_semantic_path": 26,
+      "first_semantic_path_at_seconds": 12,
+      "post_topic_change_fast_admitted": 0,
+      "simulated_observations": 9,
+      "completed_observations": 9,
+      "positive_foci": 0,
+      "queue_expired": 9,
+      "queue_dropped": 0,
+      "observed_focus_delay_seconds": {
+        "min": 12.0,
+        "max": 21.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": false,
+      "queue_seconds": [
+        3,
+        12,
+        20
+      ],
+      "span": 6,
+      "message_gap_seconds": 3,
+      "observer_elapsed_seconds": 6.08516,
+      "mode": "unknown",
+      "input_count": 30,
+      "fast_admitted": 6,
+      "needs_semantic_path": 24,
+      "first_semantic_path_at_seconds": 18,
+      "post_topic_change_fast_admitted": 0,
+      "simulated_observations": 9,
+      "completed_observations": 9,
+      "positive_foci": 0,
+      "queue_expired": 9,
+      "queue_dropped": 0,
+      "observed_focus_delay_seconds": {
+        "min": 12.0,
+        "max": 21.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": false,
+      "queue_seconds": [
+        3,
+        12,
+        20
+      ],
+      "span": 2,
+      "message_gap_seconds": 5,
+      "observer_elapsed_seconds": 6.08516,
+      "mode": "unknown",
+      "input_count": 18,
+      "fast_admitted": 2,
+      "needs_semantic_path": 16,
+      "first_semantic_path_at_seconds": 10,
+      "post_topic_change_fast_admitted": 0,
+      "simulated_observations": 9,
+      "completed_observations": 9,
+      "positive_foci": 0,
+      "queue_expired": 4,
+      "queue_dropped": 0,
+      "observed_focus_delay_seconds": {
+        "min": 11.0,
+        "max": 28.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": false,
+      "queue_seconds": [
+        3,
+        12,
+        20
+      ],
+      "span": 3,
+      "message_gap_seconds": 5,
+      "observer_elapsed_seconds": 6.08516,
+      "mode": "unknown",
+      "input_count": 18,
+      "fast_admitted": 3,
+      "needs_semantic_path": 15,
+      "first_semantic_path_at_seconds": 15,
+      "post_topic_change_fast_admitted": 0,
+      "simulated_observations": 9,
+      "completed_observations": 9,
+      "positive_foci": 0,
+      "queue_expired": 4,
+      "queue_dropped": 0,
+      "observed_focus_delay_seconds": {
+        "min": 11.0,
+        "max": 28.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": false,
+      "queue_seconds": [
+        3,
+        12,
+        20
+      ],
+      "span": 4,
+      "message_gap_seconds": 5,
+      "observer_elapsed_seconds": 6.08516,
+      "mode": "unknown",
+      "input_count": 18,
+      "fast_admitted": 4,
+      "needs_semantic_path": 14,
+      "first_semantic_path_at_seconds": 20,
+      "post_topic_change_fast_admitted": 0,
+      "simulated_observations": 9,
+      "completed_observations": 9,
+      "positive_foci": 0,
+      "queue_expired": 4,
+      "queue_dropped": 0,
+      "observed_focus_delay_seconds": {
+        "min": 11.0,
+        "max": 28.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": false,
+      "queue_seconds": [
+        3,
+        12,
+        20
+      ],
+      "span": 6,
+      "message_gap_seconds": 5,
+      "observer_elapsed_seconds": 6.08516,
+      "mode": "unknown",
+      "input_count": 18,
+      "fast_admitted": 6,
+      "needs_semantic_path": 12,
+      "first_semantic_path_at_seconds": 30,
+      "post_topic_change_fast_admitted": 0,
+      "simulated_observations": 9,
+      "completed_observations": 9,
+      "positive_foci": 0,
+      "queue_expired": 4,
+      "queue_dropped": 0,
+      "observed_focus_delay_seconds": {
+        "min": 11.0,
+        "max": 28.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": false,
+      "queue_seconds": [
+        3,
+        12,
+        20
+      ],
+      "span": 2,
+      "message_gap_seconds": 10,
+      "observer_elapsed_seconds": 6.08516,
+      "mode": "unknown",
+      "input_count": 9,
+      "fast_admitted": 2,
+      "needs_semantic_path": 7,
+      "first_semantic_path_at_seconds": 20,
+      "post_topic_change_fast_admitted": 0,
+      "simulated_observations": 9,
+      "completed_observations": 9,
+      "positive_foci": 0,
+      "queue_expired": 0,
+      "queue_dropped": 0,
+      "observed_focus_delay_seconds": {
+        "min": 12.0,
+        "max": 58.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": false,
+      "queue_seconds": [
+        3,
+        12,
+        20
+      ],
+      "span": 3,
+      "message_gap_seconds": 10,
+      "observer_elapsed_seconds": 6.08516,
+      "mode": "unknown",
+      "input_count": 9,
+      "fast_admitted": 3,
+      "needs_semantic_path": 6,
+      "first_semantic_path_at_seconds": 30,
+      "post_topic_change_fast_admitted": 0,
+      "simulated_observations": 9,
+      "completed_observations": 9,
+      "positive_foci": 0,
+      "queue_expired": 0,
+      "queue_dropped": 0,
+      "observed_focus_delay_seconds": {
+        "min": 12.0,
+        "max": 58.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": false,
+      "queue_seconds": [
+        3,
+        12,
+        20
+      ],
+      "span": 4,
+      "message_gap_seconds": 10,
+      "observer_elapsed_seconds": 6.08516,
+      "mode": "unknown",
+      "input_count": 9,
+      "fast_admitted": 4,
+      "needs_semantic_path": 5,
+      "first_semantic_path_at_seconds": 40,
+      "post_topic_change_fast_admitted": 0,
+      "simulated_observations": 9,
+      "completed_observations": 9,
+      "positive_foci": 0,
+      "queue_expired": 0,
+      "queue_dropped": 0,
+      "observed_focus_delay_seconds": {
+        "min": 12.0,
+        "max": 58.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": false,
+      "queue_seconds": [
+        3,
+        12,
+        20
+      ],
+      "span": 6,
+      "message_gap_seconds": 10,
+      "observer_elapsed_seconds": 6.08516,
+      "mode": "unknown",
+      "input_count": 9,
+      "fast_admitted": 6,
+      "needs_semantic_path": 3,
+      "first_semantic_path_at_seconds": 60,
+      "post_topic_change_fast_admitted": 0,
+      "simulated_observations": 9,
+      "completed_observations": 9,
+      "positive_foci": 0,
+      "queue_expired": 0,
+      "queue_dropped": 0,
+      "observed_focus_delay_seconds": {
+        "min": 12.0,
+        "max": 58.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": false,
+      "queue_seconds": [
+        3,
+        12,
+        20
+      ],
+      "span": 2,
+      "message_gap_seconds": 1,
+      "observer_elapsed_seconds": 6.08516,
+      "mode": "topic_change",
+      "input_count": 90,
+      "fast_admitted": 7,
+      "needs_semantic_path": 83,
+      "first_semantic_path_at_seconds": 2,
+      "post_topic_change_fast_admitted": 2,
+      "simulated_observations": 9,
+      "completed_observations": 9,
+      "positive_foci": 3,
+      "queue_expired": 15,
+      "queue_dropped": 18,
+      "observed_focus_delay_seconds": {
+        "min": 11.0,
+        "max": 19.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": false,
+      "queue_seconds": [
+        3,
+        12,
+        20
+      ],
+      "span": 3,
+      "message_gap_seconds": 1,
+      "observer_elapsed_seconds": 6.08516,
+      "mode": "topic_change",
+      "input_count": 90,
+      "fast_admitted": 9,
+      "needs_semantic_path": 81,
+      "first_semantic_path_at_seconds": 3,
+      "post_topic_change_fast_admitted": 2,
+      "simulated_observations": 9,
+      "completed_observations": 9,
+      "positive_foci": 3,
+      "queue_expired": 15,
+      "queue_dropped": 18,
+      "observed_focus_delay_seconds": {
+        "min": 11.0,
+        "max": 19.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": false,
+      "queue_seconds": [
+        3,
+        12,
+        20
+      ],
+      "span": 4,
+      "message_gap_seconds": 1,
+      "observer_elapsed_seconds": 6.08516,
+      "mode": "topic_change",
+      "input_count": 90,
+      "fast_admitted": 11,
+      "needs_semantic_path": 79,
+      "first_semantic_path_at_seconds": 4,
+      "post_topic_change_fast_admitted": 2,
+      "simulated_observations": 9,
+      "completed_observations": 9,
+      "positive_foci": 3,
+      "queue_expired": 15,
+      "queue_dropped": 18,
+      "observed_focus_delay_seconds": {
+        "min": 11.0,
+        "max": 19.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": false,
+      "queue_seconds": [
+        3,
+        12,
+        20
+      ],
+      "span": 6,
+      "message_gap_seconds": 1,
+      "observer_elapsed_seconds": 6.08516,
+      "mode": "topic_change",
+      "input_count": 90,
+      "fast_admitted": 15,
+      "needs_semantic_path": 75,
+      "first_semantic_path_at_seconds": 6,
+      "post_topic_change_fast_admitted": 2,
+      "simulated_observations": 9,
+      "completed_observations": 9,
+      "positive_foci": 3,
+      "queue_expired": 15,
+      "queue_dropped": 18,
+      "observed_focus_delay_seconds": {
+        "min": 11.0,
+        "max": 19.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": false,
+      "queue_seconds": [
+        3,
+        12,
+        20
+      ],
+      "span": 2,
+      "message_gap_seconds": 3,
+      "observer_elapsed_seconds": 6.08516,
+      "mode": "topic_change",
+      "input_count": 30,
+      "fast_admitted": 5,
+      "needs_semantic_path": 25,
+      "first_semantic_path_at_seconds": 6,
+      "post_topic_change_fast_admitted": 1,
+      "simulated_observations": 9,
+      "completed_observations": 9,
+      "positive_foci": 3,
+      "queue_expired": 9,
+      "queue_dropped": 0,
+      "observed_focus_delay_seconds": {
+        "min": 12.0,
+        "max": 21.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": false,
+      "queue_seconds": [
+        3,
+        12,
+        20
+      ],
+      "span": 3,
+      "message_gap_seconds": 3,
+      "observer_elapsed_seconds": 6.08516,
+      "mode": "topic_change",
+      "input_count": 30,
+      "fast_admitted": 7,
+      "needs_semantic_path": 23,
+      "first_semantic_path_at_seconds": 9,
+      "post_topic_change_fast_admitted": 2,
+      "simulated_observations": 9,
+      "completed_observations": 9,
+      "positive_foci": 3,
+      "queue_expired": 9,
+      "queue_dropped": 0,
+      "observed_focus_delay_seconds": {
+        "min": 12.0,
+        "max": 21.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": false,
+      "queue_seconds": [
+        3,
+        12,
+        20
+      ],
+      "span": 4,
+      "message_gap_seconds": 3,
+      "observer_elapsed_seconds": 6.08516,
+      "mode": "topic_change",
+      "input_count": 30,
+      "fast_admitted": 9,
+      "needs_semantic_path": 21,
+      "first_semantic_path_at_seconds": 12,
+      "post_topic_change_fast_admitted": 3,
+      "simulated_observations": 9,
+      "completed_observations": 9,
+      "positive_foci": 3,
+      "queue_expired": 9,
+      "queue_dropped": 0,
+      "observed_focus_delay_seconds": {
+        "min": 12.0,
+        "max": 21.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": false,
+      "queue_seconds": [
+        3,
+        12,
+        20
+      ],
+      "span": 6,
+      "message_gap_seconds": 3,
+      "observer_elapsed_seconds": 6.08516,
+      "mode": "topic_change",
+      "input_count": 30,
+      "fast_admitted": 13,
+      "needs_semantic_path": 17,
+      "first_semantic_path_at_seconds": 21,
+      "post_topic_change_fast_admitted": 5,
+      "simulated_observations": 9,
+      "completed_observations": 9,
+      "positive_foci": 3,
+      "queue_expired": 9,
+      "queue_dropped": 0,
+      "observed_focus_delay_seconds": {
+        "min": 12.0,
+        "max": 21.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": false,
+      "queue_seconds": [
+        3,
+        12,
+        20
+      ],
+      "span": 2,
+      "message_gap_seconds": 5,
+      "observer_elapsed_seconds": 6.08516,
+      "mode": "topic_change",
+      "input_count": 18,
+      "fast_admitted": 6,
+      "needs_semantic_path": 12,
+      "first_semantic_path_at_seconds": 10,
+      "post_topic_change_fast_admitted": 2,
+      "simulated_observations": 9,
+      "completed_observations": 9,
+      "positive_foci": 3,
+      "queue_expired": 4,
+      "queue_dropped": 0,
+      "observed_focus_delay_seconds": {
+        "min": 11.0,
+        "max": 28.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": false,
+      "queue_seconds": [
+        3,
+        12,
+        20
+      ],
+      "span": 3,
+      "message_gap_seconds": 5,
+      "observer_elapsed_seconds": 6.08516,
+      "mode": "topic_change",
+      "input_count": 18,
+      "fast_admitted": 8,
+      "needs_semantic_path": 10,
+      "first_semantic_path_at_seconds": 20,
+      "post_topic_change_fast_admitted": 3,
+      "simulated_observations": 9,
+      "completed_observations": 9,
+      "positive_foci": 3,
+      "queue_expired": 4,
+      "queue_dropped": 0,
+      "observed_focus_delay_seconds": {
+        "min": 11.0,
+        "max": 28.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": false,
+      "queue_seconds": [
+        3,
+        12,
+        20
+      ],
+      "span": 4,
+      "message_gap_seconds": 5,
+      "observer_elapsed_seconds": 6.08516,
+      "mode": "topic_change",
+      "input_count": 18,
+      "fast_admitted": 9,
+      "needs_semantic_path": 9,
+      "first_semantic_path_at_seconds": 35,
+      "post_topic_change_fast_admitted": 3,
+      "simulated_observations": 9,
+      "completed_observations": 9,
+      "positive_foci": 3,
+      "queue_expired": 4,
+      "queue_dropped": 0,
+      "observed_focus_delay_seconds": {
+        "min": 11.0,
+        "max": 28.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": false,
+      "queue_seconds": [
+        3,
+        12,
+        20
+      ],
+      "span": 6,
+      "message_gap_seconds": 5,
+      "observer_elapsed_seconds": 6.08516,
+      "mode": "topic_change",
+      "input_count": 18,
+      "fast_admitted": 10,
+      "needs_semantic_path": 8,
+      "first_semantic_path_at_seconds": 50,
+      "post_topic_change_fast_admitted": 4,
+      "simulated_observations": 9,
+      "completed_observations": 9,
+      "positive_foci": 3,
+      "queue_expired": 4,
+      "queue_dropped": 0,
+      "observed_focus_delay_seconds": {
+        "min": 11.0,
+        "max": 28.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": false,
+      "queue_seconds": [
+        3,
+        12,
+        20
+      ],
+      "span": 2,
+      "message_gap_seconds": 10,
+      "observer_elapsed_seconds": 6.08516,
+      "mode": "topic_change",
+      "input_count": 9,
+      "fast_admitted": 5,
+      "needs_semantic_path": 4,
+      "first_semantic_path_at_seconds": 50,
+      "post_topic_change_fast_admitted": 2,
+      "simulated_observations": 9,
+      "completed_observations": 9,
+      "positive_foci": 3,
+      "queue_expired": 0,
+      "queue_dropped": 0,
+      "observed_focus_delay_seconds": {
+        "min": 12.0,
+        "max": 58.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": false,
+      "queue_seconds": [
+        3,
+        12,
+        20
+      ],
+      "span": 3,
+      "message_gap_seconds": 10,
+      "observer_elapsed_seconds": 6.08516,
+      "mode": "topic_change",
+      "input_count": 9,
+      "fast_admitted": 5,
+      "needs_semantic_path": 4,
+      "first_semantic_path_at_seconds": 50,
+      "post_topic_change_fast_admitted": 2,
+      "simulated_observations": 9,
+      "completed_observations": 9,
+      "positive_foci": 3,
+      "queue_expired": 0,
+      "queue_dropped": 0,
+      "observed_focus_delay_seconds": {
+        "min": 12.0,
+        "max": 58.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": false,
+      "queue_seconds": [
+        3,
+        12,
+        20
+      ],
+      "span": 4,
+      "message_gap_seconds": 10,
+      "observer_elapsed_seconds": 6.08516,
+      "mode": "topic_change",
+      "input_count": 9,
+      "fast_admitted": 5,
+      "needs_semantic_path": 4,
+      "first_semantic_path_at_seconds": 50,
+      "post_topic_change_fast_admitted": 2,
+      "simulated_observations": 9,
+      "completed_observations": 9,
+      "positive_foci": 3,
+      "queue_expired": 0,
+      "queue_dropped": 0,
+      "observed_focus_delay_seconds": {
+        "min": 12.0,
+        "max": 58.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    },
+    {
+      "fixed_active_queue": false,
+      "queue_seconds": [
+        3,
+        12,
+        20
+      ],
+      "span": 6,
+      "message_gap_seconds": 10,
+      "observer_elapsed_seconds": 6.08516,
+      "mode": "topic_change",
+      "input_count": 9,
+      "fast_admitted": 5,
+      "needs_semantic_path": 4,
+      "first_semantic_path_at_seconds": 50,
+      "post_topic_change_fast_admitted": 2,
+      "simulated_observations": 9,
+      "completed_observations": 9,
+      "positive_foci": 3,
+      "queue_expired": 0,
+      "queue_dropped": 0,
+      "observed_focus_delay_seconds": {
+        "min": 12.0,
+        "max": 58.0
+      },
+      "fast_path_does_not_wait_for_observer": true,
+      "proposals_created": 0
+    }
+  ]
+}

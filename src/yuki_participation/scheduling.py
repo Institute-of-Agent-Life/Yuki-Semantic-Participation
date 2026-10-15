@@ -36,7 +36,11 @@ class ObservationQueue:
     def offer(self, event: ScopedEvent, kind: CandidateKind = CandidateKind.CONVERSATION) -> None:
         if kind is CandidateKind.INTRINSIC:
             raise ValueError("intrinsic_opportunity_has_no_semantic_focus")
-        if event.scope != self.scope or event.kind == "self":
+        if (
+            event.scope != self.scope
+            or event.kind != "human"
+            or kind is not CandidateKind.CONVERSATION
+        ):
             return
         # Coalesce revisions of the same fact, not different people/messages in one unit.
         # Context inclusion is not a semantic evaluation of an earlier invitation.
@@ -65,7 +69,7 @@ class ObservationQueue:
     def expires_at(pending: Pending) -> float:
         # A focus older than the conversation window is context, not a useful
         # request to score. Candidate validity starts only after observation.
-        return pending.event.at + (75 if pending.kind == CandidateKind.CONVERSATION else 180)
+        return pending.event.at + 75
 
     def discard_unavailable(self, now: float, events: dict[str, ScopedEvent]) -> None:
         """Drop revoked or expired facts before their text can leave the host."""
@@ -171,6 +175,8 @@ class ObservationQueue:
         for name in ("dropped", "expired", "invalidated"):
             setattr(self, name, int(checkpoint.get(name, 0)))
         for item in checkpoint.get("pending", []):
+            if item["kind"] != CandidateKind.CONVERSATION:
+                continue
             event = events.get(item["ref"]["event_id"])
             if event is None or event.ref.model_dump() != item["ref"]:
                 self.invalidated += 1
@@ -186,7 +192,11 @@ class ObservationQueue:
             # Scoring has no execution side effect. Re-evaluate only still-permitted,
             # fresh material, with a new request sequence and the original interval.
             event = events.get(inflight["ref"]["event_id"])
-            if event is not None and event.ref.model_dump() == inflight["ref"]:
+            if (
+                inflight["kind"] == CandidateKind.CONVERSATION
+                and event is not None
+                and event.ref.model_dump() == inflight["ref"]
+            ):
                 self.offer(event, CandidateKind(inflight["kind"]))
             else:
                 self.invalidated += 1
