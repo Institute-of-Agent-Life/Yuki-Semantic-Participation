@@ -2,7 +2,6 @@
 
 import pytest
 from test_core_review_regressions import controller, observation, source
-from test_v6_completion import score_seed
 
 from yuki_participation.models import CandidateKind
 
@@ -12,8 +11,9 @@ def candidates():
     event = source("conversation", at=100)
     c.observe_committed_event(event)
     assert c.apply_semantic_observation(observation(event))
-    score_seed(c, "recall", 101, kind=CandidateKind.RECALL)
-    score_seed(c, "contact", 102, kind=CandidateKind.CONTACT)
+    other = source("other-conversation", at=101, thread="other-topic")
+    assert c.observe_committed_event(other)
+    assert c.apply_semantic_observation(observation(other))
     return c
 
 
@@ -61,5 +61,5 @@ def test_disabled_advance_keeps_candidates_and_moves_the_original_clock():
         allowed_kinds=frozenset({CandidateKind.RECALL}),
         intrinsic_allowed=False,
     )
-    if c.state.pending:
-        assert c.state.proposals[c.state.pending].kind is CandidateKind.RECALL
+    assert c.state.pending is None
+    assert set(c.state.candidates) == original

@@ -18,7 +18,7 @@ def test_normal_body_and_optional_partial_report():
     assert extract_tail("正文。") == ("正文。", None)
     body, delta = extract_tail('正文。\n<yuki-state>{"mood":"curious"}</yuki-state>')
     assert body == "正文。"
-    assert delta == SelfDelta(mood="curious")
+    assert delta is None
 
 
 def test_self_report_does_not_change_other_state_or_renew_support():

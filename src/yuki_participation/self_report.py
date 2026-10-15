@@ -5,14 +5,20 @@ from __future__ import annotations
 import json
 from typing import Literal
 
-from pydantic import Field, ValidationError
+from pydantic import Field, ValidationError, model_validator
 
-from .models import Record, Timestamp
+from .models import Record, SourceRef, Timestamp
 
 
 class SelfDelta(Record):
     engage: Literal["join", "stay", "quiet"] | None = None
-    mood: str | None = Field(default=None, max_length=40)
+
+    @model_validator(mode="before")
+    @classmethod
+    def retire_mood(cls, value: object) -> object:
+        if isinstance(value, dict) and "mood" in value:
+            return {key: item for key, item in value.items() if key != "mood"}
+        return value
 
 
 class SelfReport(Record):
@@ -21,6 +27,7 @@ class SelfReport(Record):
     response_id: str
     at: Timestamp
     delta: SelfDelta
+    source: SourceRef | None = None
 
 
 def extract_tail(text: str) -> tuple[str, SelfDelta | None]:
@@ -43,4 +50,4 @@ def extract_tail(text: str) -> tuple[str, SelfDelta | None]:
         delta = SelfDelta.model_validate(json.loads(raw))
     except (ValidationError, ValueError, TypeError):
         return body, None
-    return body, delta
+    return body, delta if delta.engage is not None else None

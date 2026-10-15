@@ -79,7 +79,7 @@ class ObservationSession:
         event = self.controller.state.events.get(ref.event_id)
         if event is None or event.ref != ref or not self.controller._valid(ref):
             return False
-        if event.kind == "self":
+        if event.kind != "human" or kind is not CandidateKind.CONVERSATION:
             return False
         source = ref.model_dump(mode="json")
         if (
@@ -105,6 +105,8 @@ class ObservationSession:
         )
         if snapshot is None:
             return False
+        snapshot = self.controller.freeze_observation(snapshot)
+        self.queue.in_flight = snapshot
         self.checkpoint()
         try:
             observation = await self.observer.evaluate(snapshot)
@@ -114,8 +116,6 @@ class ObservationSession:
                 raise ValueError("observation_snapshot_mismatch")
             applied = self.controller.apply_semantic_observation(observation)
             required = {"interaction_mark", "information_state", "floor_state"}
-            if snapshot.kind != CandidateKind.CONVERSATION:
-                required.add("seed_fit")
             if not required <= observation.answers.keys():
                 # Keep usable partial interpretation (e.g. an actual stop), but repeated
                 # malformed required dimensions cannot advertise a healthy channel.

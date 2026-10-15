@@ -8,7 +8,8 @@ from pathlib import Path
 import pytest
 
 from tests.test_controller import SCOPE, event, observation
-from tests.test_participation_continuation import admitted, binding, report
+from tests.test_participation_continuation import admitted, binding, report, save_historical_wire
+from yuki_participation.autonomy_parameters import AutonomyParameters
 from yuki_participation.controller import Controller, SeenSource
 from yuki_participation.models import Choice, Effect, HostUnitOption, SourceRef
 from yuki_participation.participation import CHECKPOINT_KEY
@@ -23,6 +24,7 @@ def tick(controller, now):
 @pytest.mark.parametrize("flow", ["continuous", "paused"])
 def test_real_unit_survives_raw_retirement_and_store_reopen(tmp_path, intent, flow):
     c, origin, established = admitted()
+    c.set_parameters(AutonomyParameters(continuation_review_span=16))
     effect = Effect(effect_id="accepted", kind="message", at=101, actual_targets=("group",))
     assert c.observe_unit_expression(established, "original-run", effect)
     if intent:
@@ -35,7 +37,7 @@ def test_real_unit_survives_raw_retirement_and_store_reopen(tmp_path, intent, fl
         view = c.participation_view(focus, now)
         assert (view.matched_unit is not None) == (intent != "quiet")
         actual = established.model_copy(update={"basis": (origin.ref, focus.ref)})
-        assert c.observe_unit_input(actual, focus.ref)
+        assert c.observe_unit_input(actual, focus.ref, continuation=True)
         if intent:
             assert c.observe_unit_hint(
                 actual, report(intent, at=now, sequence=index + 1, response=f"response-{index}")
@@ -51,7 +53,7 @@ def test_real_unit_survives_raw_retirement_and_store_reopen(tmp_path, intent, fl
     store = SnapshotStore(tmp_path / "state.sqlite3")
     _, state = store.load(c.state.scope)
     store.close()
-    c = Controller.restore(state, 1800)
+    c = Controller.restore(state, 1800, parameters=c.parameters)
     focus = event("fresh-unaddressed", at=1801)
     assert c.observe_committed_event(focus)
     unit = c.participating_units(1801)[0]
@@ -91,7 +93,9 @@ def test_retired_source_withdrawal_cannot_resurrect_intent_or_expression(changed
     for source in (latest, context, expression_context):
         assert c.observe_committed_event(source)
     assert c.observe_unit_input(
-        established.model_copy(update={"basis": (origin.ref, latest.ref)}), latest.ref
+        established.model_copy(update={"basis": (origin.ref, latest.ref)}),
+        latest.ref,
+        continuation=True,
     )
     assert c.observe_unit_hint(
         established.model_copy(update={"basis": (origin.ref, context.ref)}), report("stay", at=108)
@@ -124,7 +128,7 @@ def test_retired_source_withdrawal_cannot_resurrect_intent_or_expression(changed
 
 
 @pytest.mark.parametrize("correction", ["unknown", "different"])
-def test_retirement_does_not_forget_actual_conflicting_interpretation(correction):
+def test_retirement_keeps_conclusive_correction_distinct_from_unknown(correction):
     c, source, established = admitted()
     assert c.observe_unit_hint(established, report("stay"))
     other = HostUnitOption(key="other", thread="other", target="A")
@@ -147,11 +151,11 @@ def test_retirement_does_not_forget_actual_conflicting_interpretation(correction
         }
     )
     assert c.apply_semantic_observation(corrected)
-    assert not c.participating_units(110)
+    assert c.participating_units(110)[0].semantic_continuation == (correction == "unknown")
     tick(c, 1800)
     fresh = event("new", at=1801)
     assert c.observe_committed_event(fresh)
-    assert c.participation_view(fresh, 1801).matched_unit is None
+    assert (c.participation_view(fresh, 1801).matched_unit is None) == (correction == "different")
 
 
 def test_arbitrary_seen_fingerprint_is_not_a_live_source_or_unit_establishment():
@@ -188,6 +192,27 @@ def test_fingerprint_resource_pressure_retires_derived_units_before_rejecting_ne
     assert oldest.event_id not in c.state.seen
 
 
+def different_unit_review(c, source):
+    other = HostUnitOption(key="other", thread="other", target="A")
+    raw = source.model_copy(update={"unit_ambiguous": True, "unit_options": (other,)})
+    c.state.events[source.ref.event_id] = raw
+    observed = observation(raw, act="unknown", floor="unknown")
+    observed = observed.model_copy(
+        update={
+            "resolved_unit": other,
+            "answers": {
+                **observed.answers,
+                "unit_selection": Choice(
+                    choice="other", probabilities={"other": 1.0, "unknown": 0.0}
+                ),
+            },
+        }
+    )
+    assert c.apply_semantic_observation(observed)
+    assert not c.participating_units(110)[0].semantic_continuation
+    return raw
+
+
 @pytest.mark.parametrize("legacy_checkpoint", [False, True])
 def test_old_reader_fold_and_unrelated_stop_seen_do_not_resurrect_unknown_unit(
     tmp_path, legacy_checkpoint
@@ -198,10 +223,7 @@ def test_old_reader_fold_and_unrelated_stop_seen_do_not_resurrect_unknown_unit(
     c, source, established = admitted()
     assert c.observe_unit_hint(established, report("stay"))
     legacy_units = c.state.host_checkpoint[CHECKPOINT_KEY]["units"]
-    raw = source.model_copy(update={"unit_ambiguous": True})
-    c.state.events[source.ref.event_id] = raw
-    assert c.apply_semantic_observation(observation(raw, act="unknown", floor="unknown"))
-    assert not c.state.host_checkpoint[CHECKPOINT_KEY]["units"]
+    raw = different_unit_review(c, source)
     stop = event("other-stop", at=110).model_copy(
         update={"thread": "other-thread", "author": "B", "target": "B"}
     )
@@ -213,7 +235,7 @@ def test_old_reader_fold_and_unrelated_stop_seen_do_not_resurrect_unknown_unit(
             value.pop("retired_refs", None)
         c.state.host_checkpoint[CHECKPOINT_KEY]["units"] = legacy_units
     store = SnapshotStore(tmp_path / "state.sqlite3")
-    store.save(c.state, expected_revision=0)
+    save_historical_wire(store, c.state)
     store.close()
     paths = subprocess.check_output(
         ["git", "ls-tree", "-r", "--name-only", revision, "src/yuki_participation"], text=True
@@ -256,12 +278,9 @@ s.close()
 def test_late_real_feedback_cannot_reestablish_reinterpreted_unit(feedback):
     c, source, established = admitted()
     assert c.observe_unit_hint(established, report("stay"))
-    raw = source.model_copy(update={"unit_ambiguous": True})
-    c.state.events[source.ref.event_id] = raw
-    assert c.apply_semantic_observation(observation(raw, act="unknown", floor="unknown"))
-    assert not c.state.host_checkpoint[CHECKPOINT_KEY]["units"]
+    different_unit_review(c, source)
     if feedback == "hint":
-        assert not c.observe_unit_hint(
+        assert c.observe_unit_hint(
             established, report("stay", sequence=2, at=111, response="late-response")
         )
     else:
@@ -271,7 +290,7 @@ def test_late_real_feedback_cannot_reestablish_reinterpreted_unit(feedback):
         assert receipt.effect_id in c.state.host_checkpoint[CHECKPOINT_KEY]["expressions"]
         assert c.observe_unit_expression(established, "original-run", receipt)
         assert len(c.state.effects) == 1
-    assert not c.participating_units(112)
+    assert not c.participating_units(112)[0].semantic_continuation
     tick(c, 1800)
     fresh = event("new", at=1801)
     assert c.observe_committed_event(fresh)
@@ -279,5 +298,7 @@ def test_late_real_feedback_cannot_reestablish_reinterpreted_unit(feedback):
     # A genuine new admission establishes its own unit before a new Main hint.
     current = binding(fresh)
     assert c.observe_unit_input(current, fresh.ref)
-    assert c.observe_unit_hint(current, report("stay", at=1802, response="new-response"))
+    assert c.observe_unit_hint(
+        current, report("stay", at=1802, response="new-response", run="new-activation")
+    )
     assert c.participation_view(fresh, 1802).matched_unit is not None

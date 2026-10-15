@@ -6,12 +6,18 @@
 库默认 True 兼容旧 caller。普通持续参与查询和 unit 自报不经过下面的自主采样；
 proposal 不等于一次模型调用或公开发送。
 
+新语义来源只来自真实 human conversation，context 可含真实 human/self；后台 Memory 种子、
+recall/contact 新机会和相关 fingerprint/claim 已退役，无来源 intrinsic 保留。
+Main 按需查询 Memory、自省与 Dream 不因此退出，旧已接纳运行继续按原事实恢复。
+
 ## 输入与状态
 
 真人事件形成短时活动 `q`、来源候选使用的慢群情境 `ℓ`，以及无来源机会使用的
 真人活动量 `H`。`H` 是每条真人消息的 48 小时指数核之和；它不计 Yuki 自己的消息。
-SELF 的结构化 `engage` 形成 `d`，按 1800 秒回中性。`mood` 目前只供表达使用，
-不从自由文本推断数值。真实 `NO_REPLY` 形成 `n`；确认计算形成 `f`。
+SELF 的结构化 `engage` 形成 `d`，按 1800 秒回中性。无消费者的 `mood` 已从新自报退出，
+旧读取只清退 mood，保留原 engage 与报告身份。真实 `NO_REPLY` 形成 `n`；确认计算形成 `f`。
+普通局部 engage 不向下方 source_rate/pressure 再增加一份权重，也不把局部 quiet 当作全群开关。
+已有真人焦点的 Jev 请求冻结 scope 正确的局部/SELF 意愿，作为解释上下文；意愿更新本身不购买观察。
 
 每个确实启动主 Agent 的自主 Work 在首次确认模型请求时形成一个 `WorkPulse`。
 同一 Work 的多次请求、工具调用或任意条消息都只贡献一个脉冲。
@@ -50,6 +56,36 @@ P(本轮机会 | Δt) = 1-exp(-λ_total Δt)
 重启后以恢复时刻重新开始采样，停机期间不积压假想机会。不可用、已有待接纳机会或
 明确邀请时也不累积自主抽样时间。单次 Work 内没有消息数限制和重新采样。
 
+## 普通快路复核与双退出
+
+普通快接不经过上方自主概率率，也不等待 Jev；Host 可把同一真人焦点排入原队列并行复核。
+`continuation_review_span` 默认 4，计同一讨论/对象在未获得真实语义确认时借用旧关系的快捷接纳输入。
+原输入只记一次，重启、hydrate 与 steer/排队竞争不重复计数。它不是 QQ 消息配额或冷却时间。
+达到跨度后新输入回原语义入口，明确请求、原 Work 输入和原 Main 已选择的合法补充保持原处理；
+selected 跳过新 activation 的跨度时仍检查 quiet/语义，不能借此重新打开已否定关系。
+
+自身 quiet 和真实 other_exchange/转题/停止各自能退出原快路，不能互相覆盖放行。
+自身 stay/send、unknown、缺维度或传输故障均不续确认额度，不能自证一直有人与 Yuki 交流。
+语义正向确认只推进该焦点的原进度，之后 C/D 即使在 context 中也不自动算已确认。
+原来源/接纳位置和报告顺序保持，旧 B 负反馈不能推翻较新已确认邀请；
+同时间使用 Host source_order 和普通 SelfReport.source，不按 opaque ID 字符串或到达时间猜测。
+缺进度的旧 unit 是未知，不按 0 发新满额；裁剪正文、改 K 或重启不能让额度凭空恢复。
+
+## 默认跨度的离线选择
+
+[有限快路报告](evidence/fastpath-review-replay-2026-10-15.json)包含 192 条固定 active/inactive 队列对照，
+使用真实 Controller/队列、合成语义和虚拟 2 秒 tick，输入间隔为 1/3/5/10 秒。
+五份已有真实请求耗时的中位数约 6.003 秒、最大约 6.085 秒，仅作为合成 HTTP 耗时量级。
+输入持续 90 秒，再排空 22 秒，全部调用数与观察完成数属于完整 112 秒窗口。
+
+active 的 5 秒正向输入轨迹中，K=4 保留 18/18 次快接；inactive 对照为 16/18。
+默认 4 在及时续聊与尚未纠正的连续外推之间取折中；并不意味着线上最优。
+实际 ObservationSession timeout/退避重排/冷恢复另有真实异常回归，
+合成 unknown 不是 timeout，不用 one-hot 正向轨迹证明真实 Jev 判断更准或实际 Main 延迟更低。
+
+后台真人复核可能增加 Jev 请求；种子删除的降量、真人复核的新增、实际 Main 和实际发送分别统计。
+没有配对自然流量与完整 usage 时，不能宣称净成本、缓存率或用户体验已经改善。
+
 ## 快照与验证
 
 旧 `g` 恢复、`p` 发言惩罚、`N_Y/N_H` 比例、净值正数门槛及长期沉寂底率
@@ -58,7 +94,7 @@ P(本轮机会 | Δt) = 1-exp(-λ_total Δt)
 不重写历史聊天或补采样。小时桶用桶内首末事件时间的中点估计贡献，保留真实最后真人时间。
 初始化后 `H` 随快照压缩为带时间的迹线；真实计算、短时活动、来源群情境及
 `NO_REPLY` 保留独立职责。
-工作脉冲保留三天，此时慢工作时标已衰减至近零。接收明细保留至多两天且
+工作脉冲按当前 Work/暴露最大时标的 12 倍、至少三天保留。接收明细保留至多两天且
 至多 2048 项，较早贡献压成带时间戳的衰减基线，公开 Work 的正向接收程度
 单独保留，避免活跃群的快照无界增长。
 
@@ -66,19 +102,20 @@ P(本轮机会 | Δt) = 1-exp(-λ_total Δt)
 以及快照恢复。`scripts/replay_autonomous_evolution.py` 在旧 30 天合成资料上分别模拟
 每次 Work 启动后 `NO_REPLY` 与公开发出后无人回应，比较自主机会分布；模拟发送不进入
 真实 SocialService，也没有真人接收观测。锚定回复和迟到回执由定向测试覆盖。
-旧底率版本的回放证据仍保留在 `docs/evidence/` 供比较，不代表本公式的结果。
+旧底率版本与下列旧 30 天回放证据保留在 `docs/evidence/`，只对应各自报告所记输入、参数与源码。
+以下历史计数不作为本次种子删除和新增后台复核后的总量预测。
 先前 14400 秒基率公式在两群各 30 天合成轨迹中，仅模型 `NO_REPLY` 的情形提出 1,576 次机会，
 其中无来源 25 次、最后真人消息超过六小时 12 次；每个 Work 都模拟公开发送且无人回应时，
 分别为 1,551、7、5 次。对应报告见[仅计算回执](evidence/autonomous-activity-window-no-reply.json)
 与[无人回应的公开发送](evidence/autonomous-activity-window-unanswered.json)。高活跃轨迹有大量
 真人来源机会，公开发送后无回应也会压低后续无来源率。这些数字只衡量合成机会，
 不代表真实 QQ 发言数。
-当前采用激进的 600 秒基率、0.2 基础倾向、600 秒冷场上升时标与 80 活动半饱和值。
+该次调参采用 600 秒基率、0.2 基础倾向、600 秒冷场上升时标与 80 活动半饱和值，当前默认继续保留这些系数。
 600 秒不是固定唤醒周期；快慢 Work 密度、未回应暴露及接收反馈的权重保持。
 配对回放可以通过 `scripts/replay_autonomous_evolution.py --parameters profile.json` 指定
 完整参数；报告保存实际生效参数。相同资料、脚本和样本序号的配对结果如下：
 
-| 模拟结果 | 先前总机会 / 无来源 / 超六小时 | 当前总机会 / 无来源 / 超六小时 |
+| 历史模拟结果 | 调参前总机会 / 无来源 / 超六小时 | 该次调参后总机会 / 无来源 / 超六小时 |
 | --- | --- | --- |
 | 仅计算后 `NO_REPLY` | 1576 / 25 / 12 | 1857 / 304 / 124 |
 | 每个 Work 公开发送且无人回应 | 1551 / 7 / 5 | 1627 / 84 / 47 |
@@ -87,14 +124,26 @@ P(本轮机会 | Δt) = 1-exp(-λ_total Δt)
 无来源机会增加约 12 倍，模拟公开无人回应仍将 304 次机会压到 84 次；总模拟
 Work 分别增加约 18% 和 5%。最大最后真人消息间隔分别约 43.3 和 41.4 小时，
 这来自曾有活动的群冷场长尾，并不赋予长期沉寂群固定突破率。
-当前报告见[仅计算](evidence/autonomous-observer-recovery-aggressive-no-reply.json)和
+该次报告见[仅计算](evidence/autonomous-observer-recovery-aggressive-no-reply.json)和
 [无人回应](evidence/autonomous-observer-recovery-aggressive-unanswered.json)，配对基准见
 [先前仅计算](evidence/autonomous-observer-recovery-previous-no-reply.json)和
 [先前无人回应](evidence/autonomous-observer-recovery-previous-unanswered.json)。
 新回放证据与真实 QQ 行为分别验收。
 真实群聊效果须与 Host 回执及 Jev 观察另行验证。
 
-`AutonomyParameters` 收拢非请求自主机会的基率、压力权重、来源率、迹线增量与时标。
+## 参数与安全升级
+
+`AutonomyParameters` 收拢非请求自主机会的基率、压力权重、来源率、迹线增量与时标，
+以及普通快路的 `continuation_review_span`。独立库的来源基率默认分母为 45 秒；
+Host 可能有自己的 30 秒默认或真实挂载覆盖，以实际加载参数为准，不把分母当固定等待周期。
 Host 可在每轮采样前换入经过校验的整份参数；配置不写入快照，不重写已接纳的 Work、
 回执或抽样序号。改变时标会从当前保留的迹线和脉冲继续演化，已经按旧时标裁剪的
 远古证据不会重新出现。确定性协议边界、权限和语义观测 Rubric 不属于此配置。
+
+三个退役参数 independent_source_factor、recall_source_decay_seconds、contact_source_decay_seconds
+只在旧配置 reader 清退，其余未知字段仍严格校验。Host 升级时保留其余实际覆盖，
+不拿新示例整份替换线上调参。冷恢复保留原预算、采样与真实效果，不补停机期间的抽样。
+
+旧已接纳 recall/contact 的原 proposal/run、Work/compute、公开暴露和接收反馈继续恢复，
+不因删除种子生成器而把真实 W/E/R 清空。旧 seed 正文和未接纳派生队列不再进入新请求。
+已经产生新输入、工作或投递后，回退使用兼容新格式的修复版本，不能用旧数据库覆盖新事实。

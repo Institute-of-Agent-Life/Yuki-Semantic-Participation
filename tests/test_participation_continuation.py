@@ -9,6 +9,7 @@ from pathlib import Path
 import pytest
 
 from tests.test_controller import SCOPE, event, observation
+from yuki_participation.autonomy_parameters import AutonomyParameters
 from yuki_participation.controller import Controller
 from yuki_participation.models import Choice, Effect, Feedback, HostUnitOption, Scope, SourceRef
 from yuki_participation.participation import CHECKPOINT_KEY, ParticipationUnit, UnitBinding
@@ -23,6 +24,22 @@ def binding(source, *, thread=None, target=None, basis=None):
         unit=ParticipationUnit(thread=thread or source.thread, target=target or source.target),
         actor=source.author,
         basis=basis or (source.ref,),
+    )
+
+
+def save_historical_wire(store, state):
+    """A frozen old producer's wire shape, not forward support in its strict reader."""
+    raw = state.model_dump(mode="json")
+    for original_event in raw["events"].values():
+        original_event.pop("source_order", None)
+    for seen in raw["seen"].values():
+        seen.pop("source_order", None)
+    for report in (*raw["self_reports"].values(), raw["engagement_report"]):
+        if report is not None:
+            report.pop("source", None)
+    store.connection.execute(
+        "INSERT INTO snapshots VALUES(?,?,?,?)",
+        (state.scope.conversation_id, state.scope.generation, 1, json.dumps(raw).encode()),
     )
 
 
@@ -74,7 +91,7 @@ def test_pure_matching_does_not_resolve_a_new_focus_or_consume_it():
         view = c.participation_view(next_event, 105)
         assert view.source_valid and not view.current_resolved
         assert view.matched_unit.unit == ParticipationUnit(thread="topic", target="A")
-        assert not view.needs_observation
+        assert view.needs_observation
     assert c.state.model_dump_json() == before
     assert next_event.ref.event_id not in c.state.observations
 
@@ -306,7 +323,7 @@ def test_no_reply_without_intent_does_not_self_prove_continuation(hint):
     view = c.participation_view(next_event, 105)
     assert not c.participating_units(105)[0].expressed
     assert (view.matched_unit is not None) == bool(hint)
-    assert view.needs_observation == (hint is None)
+    assert view.needs_observation
 
 
 def test_confirmed_expression_without_hint_can_match_and_survives_baseline_compaction():
@@ -369,8 +386,9 @@ def test_semantic_correction_of_admitted_focus_cannot_match_old_unit_on_next_foc
     c.observe_committed_event(next_event)
     before_query = c.state.model_dump_json()
     view = c.participation_view(next_event, 105)
-    assert view.matched_unit is None and view.needs_observation
-    assert not c.participating_units(105)
+    assert view.needs_observation
+    assert (view.matched_unit is None) == (corrected == "different")
+    assert c.participating_units(105)[0].semantic_continuation == (corrected == "unknown")
     assert c.state.model_dump_json() == before_query
     assert c.state.effects[effect.effect_id] == before
     assert c.state.host_checkpoint[CHECKPOINT_KEY]["expressions"]
@@ -378,7 +396,7 @@ def test_semantic_correction_of_admitted_focus_cannot_match_old_unit_on_next_foc
 
 @pytest.mark.parametrize("namespace_version", [1, 2])
 @pytest.mark.parametrize("retired", [False, True])
-def test_real_old_reader_load_save_keeps_namespace_and_other_host_keys(
+def test_historical_wire_old_reader_load_save_keeps_namespace_and_other_host_keys(
     tmp_path, namespace_version, retired
 ):
     revision = "b9c7cc71f8dbaf9bc4b45419e0270a08bf48fe9a"
@@ -396,7 +414,7 @@ def test_real_old_reader_load_save_keeps_namespace_and_other_host_keys(
     namespace = c.state.host_checkpoint[CHECKPOINT_KEY]
     database = tmp_path / "participation.sqlite3"
     store = SnapshotStore(database)
-    store.save(c.state, expected_revision=0)
+    save_historical_wire(store, c.state)
     store.close()
     paths = subprocess.check_output(
         ["git", "ls-tree", "-r", "--name-only", revision, "src/yuki_participation"], text=True
@@ -409,6 +427,7 @@ def test_real_old_reader_load_save_keeps_namespace_and_other_host_keys(
         target.write_bytes(subprocess.check_output(["git", "show", f"{revision}:{path}"]))
     code = """
 from pathlib import Path
+from yuki_participation.autonomy_parameters import AutonomyParameters
 from yuki_participation.controller import Controller
 from yuki_participation.models import Scope
 from yuki_participation.store import SnapshotStore
@@ -456,6 +475,7 @@ def test_new_admitted_input_and_hydration_replay_do_not_reset_local_quiet():
 
 def test_fifty_continuations_keep_establishment_binding_and_each_actual_effect_basis(tmp_path):
     c, original, origin = admitted()
+    c.set_parameters(AutonomyParameters(continuation_review_span=64))
     assert c.observe_unit_hint(origin, report("stay"))
     bindings = {}
     for index in range(1, 51):
@@ -465,8 +485,8 @@ def test_fifty_continuations_keep_establishment_binding_and_each_actual_effect_b
         assert matched is not None and matched.binding == origin
         actual = matched.binding.model_copy(update={"basis": (*matched.binding.basis, focus.ref)})
         assert len(actual.basis) == 2
-        assert c.observe_unit_input(actual, focus.ref)
-        assert c.observe_unit_input(actual, focus.ref)
+        assert c.observe_unit_input(actual, focus.ref, continuation=True)
+        assert c.observe_unit_input(actual, focus.ref, continuation=True)
         assert c.observe_unit_hint(
             actual,
             report("stay", sequence=index + 1, at=focus.at, response=f"response-{index}"),
@@ -486,7 +506,7 @@ def test_fifty_continuations_keep_establishment_binding_and_each_actual_effect_b
             store.save(c.state, expected_revision=0)
             _, restored = store.load(SCOPE)
             store.close()
-            c = Controller.restore(restored, focus.at)
+            c = Controller.restore(restored, focus.at, parameters=c.parameters)
     namespace = c.state.host_checkpoint[CHECKPOINT_KEY]
     assert {k: v["binding"] for k, v in namespace["expressions"].items()} == bindings
     assert len(c.state.effects) == 50
@@ -504,7 +524,7 @@ def test_fixed_unit_binding_still_rejects_changed_establishment_or_latest_input(
     focus = event("latest", at=105)
     c.observe_committed_event(focus)
     actual = origin.model_copy(update={"basis": (source.ref, focus.ref)})
-    assert c.observe_unit_input(actual, focus.ref)
+    assert c.observe_unit_input(actual, focus.ref, continuation=True)
     assert c.observe_unit_hint(actual, report("stay", at=105))
     c.observe_source_change(source.ref if changed == "origin" else focus.ref)
     next_event = event("unobserved", at=106)

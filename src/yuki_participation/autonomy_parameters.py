@@ -6,7 +6,7 @@ profile changes future sampling while leaving accepted Work and receipts intact.
 
 from __future__ import annotations
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 class AutonomyParameters(BaseModel):
@@ -38,7 +38,7 @@ class AutonomyParameters(BaseModel):
     source_social_weight: float = Field(default=2.0, ge=0, le=20)
     source_opening_seconds: float = Field(default=4, gt=0, le=86400)
     source_opening_floor: float = Field(default=0.1, ge=0, le=1)
-    independent_source_factor: float = Field(default=0.35, ge=0, le=1)
+    continuation_review_span: int = Field(default=4, ge=1)
 
     activity_decay_seconds: float = Field(default=60, gt=0, le=604800)
     activity_increment: float = Field(default=0.1, ge=0, le=1)
@@ -56,10 +56,24 @@ class AutonomyParameters(BaseModel):
     willingness_decay_seconds: float = Field(default=1800, gt=0, le=604800)
     willingness_magnitude: float = Field(default=0.7, ge=0, le=1)
     conversation_source_decay_seconds: float = Field(default=90, gt=4, le=604800)
-    recall_source_decay_seconds: float = Field(default=3600, gt=4, le=604800)
-    contact_source_decay_seconds: float = Field(default=1800, gt=4, le=604800)
     unanchored_reception_weight: float = Field(default=0.02, ge=0, le=1)
     unanchored_reception_decay_seconds: float = Field(default=1800, gt=0, le=604800)
+
+    @model_validator(mode="before")
+    @classmethod
+    def retire_seed_parameters(cls, value: object) -> object:
+        if isinstance(value, dict):
+            return {
+                key: item
+                for key, item in value.items()
+                if key
+                not in {
+                    "independent_source_factor",
+                    "recall_source_decay_seconds",
+                    "contact_source_decay_seconds",
+                }
+            }
+        return value
 
 
 DEFAULT_AUTONOMY_PARAMETERS = AutonomyParameters()

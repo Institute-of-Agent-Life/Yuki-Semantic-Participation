@@ -601,7 +601,7 @@ def test_direct_invitation_is_not_delayed_by_an_unscored_same_unit_fragment():
     assert c.observe_committed_event(invitation)
     assert c.apply_semantic_observation(observation(invitation))
     assert c.opportunity_scores(105)[invitation.ref.event_id] > 0
-    for kind in ("self", "seed"):
+    for kind in ("self",):
         assert c.observe_committed_event(source(kind, at=105, kind=kind))
         assert c.opportunity_scores(105)[invitation.ref.event_id] > 0
     assert c.observe_committed_event(source("other-thread", at=105, thread="different"))
