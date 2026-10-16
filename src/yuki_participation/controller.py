@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 import math
+from collections.abc import Callable
 from typing import Literal, TypeGuard
 from uuid import uuid4
 
@@ -46,6 +47,12 @@ from .participation import (
 )
 from .rubric import CRITERIA, REVISION
 from .self_report import SelfReport
+
+ActorIdentity = Callable[[str], str]
+
+
+def original_actor(actor: str) -> str:
+    return actor
 
 
 def _dimension_known(answer: Choice | None) -> TypeGuard[Choice]:
@@ -508,7 +515,9 @@ class Controller:
         seen = self.state.seen.get(ref.event_id)
         return seen.source_order if seen is not None and seen.revision == ref.revision else None
 
-    def apply_semantic_observation(self, observation: Observation) -> bool:
+    def apply_semantic_observation(
+        self, observation: Observation, *, actor_identity: ActorIdentity = original_actor
+    ) -> bool:
         if observation.snapshot.kind is not CandidateKind.CONVERSATION:
             return False
         snap = observation.snapshot
@@ -617,7 +626,7 @@ class Controller:
                 else ("observer" if observation.resolved_unit is not None else None),
             },
         )
-        self._record_unit_reviews(observation, event)
+        self._record_unit_reviews(observation, event, actor_identity=actor_identity)
         self._record_reception(key, self.state.observations[key])
         self.state.candidates.pop(key, None)
         self.state.boundaries.pop(key, None)
@@ -1140,12 +1149,103 @@ class Controller:
             self._save_participation(checkpoint)
             self._prune()
 
-    def participating_units(self, now: float) -> tuple[UnitParticipation, ...]:
+    def participating_units(
+        self, now: float, *, actor_identity: ActorIdentity = original_actor
+    ) -> tuple[UnitParticipation, ...]:
         """Read existing ordinary and SELF units; never queue, consume, or advance."""
-        return self._participating_units(now, self._participation_checkpoint())
+        checkpoint = self._participation_checkpoint()
+        return self._current_units(now, checkpoint, actor_identity)
+
+    def _source_before(
+        self, left_at: float, left: SourceRef | None, right_at: float, right: SourceRef | None
+    ) -> bool:
+        if left_at != right_at:
+            return left_at < right_at
+        left_order = self._source_order(left) if left else None
+        right_order = self._source_order(right) if right else None
+        return left_order is not None and right_order is not None and left_order < right_order
+
+    def _current_units(
+        self, now: float, checkpoint: ParticipationCheckpoint, actor_identity: ActorIdentity
+    ) -> tuple[UnitParticipation, ...]:
+        """Interpret current identity over original facts, without rewriting their owners."""
+        groups: dict[tuple[str, str, str], list[UnitParticipation]] = {}
+        for unit in self._participating_units(now, checkpoint, actor_identity=actor_identity):
+            identity = (
+                unit.unit.target
+                if unit.binding.actor == "SELF"
+                else actor_identity(unit.unit.target)
+            )
+            groups.setdefault(
+                (unit.unit.thread, identity, unit.binding.actor == "SELF" and "SELF" or "human"), []
+            ).append(unit)
+        result = []
+        for values in groups.values():
+            if len(values) == 1:
+                result.append(values[0])
+                continue
+            originals = [
+                checkpoint.units[self._unit_key(v.unit.thread, v.unit.target)] for v in values
+            ]
+            hints = [
+                (unit.hint, self._hint_source(unit.hint, unit.hint_basis))
+                for unit in originals
+                if unit.hint is not None
+                and all(self._unit_ref_valid(ref, unit) for ref in unit.hint_basis)
+            ]
+            latest_hints = [
+                hint
+                for hint, source in hints
+                if not any(
+                    self._source_before(hint.at, source, other.at, other_source)
+                    or (hint.run_ref == other.run_ref and hint.sequence < other.sequence)
+                    for other, other_source in hints
+                )
+            ]
+            intents = {hint.delta.engage for hint in latest_hints}
+            reviews = [unit.review for unit in originals if unit.review is not None]
+            latest_reviews = [
+                review
+                for review in reviews
+                if not any(
+                    self._source_before(review.at, review.source, other.at, other.source)
+                    or (review.source == other.source and review.sequence < other.sequence)
+                    for other in reviews
+                )
+            ]
+            verdicts = {
+                self._review_verdict(review, values[0].unit, actor_identity=actor_identity)
+                for review in latest_reviews
+            }
+            inputs = [
+                self._unconfirmed_input_refs(unit, actor_identity=actor_identity)
+                for unit in originals
+            ]
+            result.append(
+                values[0].model_copy(
+                    update={
+                        "anchors": tuple(
+                            dict.fromkeys(ref for value in values for ref in value.anchors)
+                        ),
+                        "expressed": any(value.expressed for value in values),
+                        "closed": any(value.closed for value in values),
+                        "engage": next(iter(intents)) if len(intents) == 1 else None,
+                        "unconfirmed_inputs": None
+                        if any(value is None for value in inputs)
+                        else len(set().union(*(value for value in inputs if value is not None))),
+                        "semantic_continuation": len(intents) <= 1
+                        and (not verdicts or verdicts == {True}),
+                    }
+                )
+            )
+        return tuple(result)
 
     def _participating_units(
-        self, now: float, checkpoint: ParticipationCheckpoint
+        self,
+        now: float,
+        checkpoint: ParticipationCheckpoint,
+        *,
+        actor_identity: ActorIdentity = original_actor,
     ) -> tuple[UnitParticipation, ...]:
         units = {
             k: v
@@ -1211,8 +1311,8 @@ class Controller:
                 expressed=self._unit_key(v.binding.unit.thread, v.binding.unit.target) in expressed,
                 closed=(v.binding.unit.thread, v.binding.unit.target) in closed_units
                 or v.binding.unit.thread in closed_threads,
-                unconfirmed_inputs=self._unconfirmed_inputs(v),
-                semantic_continuation=self._semantic_continuation(v),
+                unconfirmed_inputs=self._unconfirmed_inputs(v, actor_identity=actor_identity),
+                semantic_continuation=self._semantic_continuation(v, actor_identity=actor_identity),
             )
             for v in sorted(units.values(), key=lambda v: (-v.last_at, v.binding.unit.thread))
             if v.last_at <= now
@@ -1229,11 +1329,20 @@ class Controller:
         return True
 
     def participation_view(
-        self, event: ScopedEvent, now: float, *, check_budget: bool = True
+        self,
+        event: ScopedEvent,
+        now: float,
+        *,
+        check_budget: bool = True,
+        actor_identity: ActorIdentity = original_actor,
     ) -> ParticipationView:
         """Relationship candidates are distinct from the focus's observed resolution."""
         return self._participation_view(
-            event, now, self._participation_checkpoint(), check_budget=check_budget
+            event,
+            now,
+            self._participation_checkpoint(),
+            check_budget=check_budget,
+            actor_identity=actor_identity,
         )
 
     def _participation_view(
@@ -1243,6 +1352,7 @@ class Controller:
         checkpoint: ParticipationCheckpoint,
         *,
         check_budget: bool,
+        actor_identity: ActorIdentity = original_actor,
     ) -> ParticipationView:
         valid = event.scope == self.state.scope and self._valid(event.ref)
         if not valid:
@@ -1253,16 +1363,21 @@ class Controller:
         observed = self.state.observations.get(event.ref.event_id)
         resolved = self._resolved_event(event)
         current_resolved = observed is not None and not resolved.unit_ambiguous
-        units = self._participating_units(now, checkpoint)
+        units = self._current_units(now, checkpoint, actor_identity)
         candidates = tuple(
             u
             for u in units
-            if not u.closed and (event.author == u.unit.target or event.reply_to in u.anchors)
+            if not u.closed
+            and (
+                actor_identity(event.author) == actor_identity(u.unit.target)
+                or event.reply_to in u.anchors
+            )
         )
         personal = tuple(
             u
             for u in candidates
-            if u.unit.target == event.author and (u.expressed or u.engage in {"join", "stay"})
+            if actor_identity(u.unit.target) == actor_identity(event.author)
+            and (u.expressed or u.engage in {"join", "stay"})
         )
         explicit = tuple(u for u in personal if event.reply_to and event.reply_to in u.anchors)
         matches = explicit or personal
@@ -1319,6 +1434,7 @@ class Controller:
         now: float,
         *,
         check_budget: bool = True,
+        actor_identity: ActorIdentity = original_actor,
     ) -> bool:
         """Recheck an unadmitted opportunity at the original Host boundary; no I/O."""
         event = self.state.events.get(event_ref.event_id)
@@ -1331,17 +1447,32 @@ class Controller:
         ):
             return False
         matched = self._participation_view(
-            event, now, checkpoint or ParticipationCheckpoint(), check_budget=check_budget
+            event,
+            now,
+            checkpoint or ParticipationCheckpoint(),
+            check_budget=check_budget,
+            actor_identity=actor_identity,
         ).matched_unit
         return (
             matched is not None
             and matched.binding.scope == binding.scope
-            and matched.unit == binding.unit
+            and matched.unit.thread == binding.unit.thread
+            and actor_identity(matched.unit.target) == actor_identity(binding.unit.target)
         )
 
     @staticmethod
-    def _review_verdict(review: UnitSemanticReview, unit: ParticipationUnit) -> bool | None:
-        if review.resolved_unit is not None and review.resolved_unit != unit:
+    def _review_verdict(
+        review: UnitSemanticReview,
+        unit: ParticipationUnit,
+        *,
+        actor_identity: ActorIdentity = original_actor,
+    ) -> bool | None:
+        same_unit = (
+            review.resolved_unit is not None
+            and review.resolved_unit.thread == unit.thread
+            and actor_identity(review.resolved_unit.target) == actor_identity(unit.target)
+        )
+        if review.resolved_unit is not None and not same_unit:
             return False
         act, floor = review.interaction, review.floor
         if _dimension_known(act) and act.choice in {
@@ -1357,20 +1488,34 @@ class Controller:
             if (
                 act.choice in {"invite_yuki", "extend_yuki"}
                 and floor.choice == "yuki"
-                and review.resolved_unit == unit
+                and same_unit
             ):
                 return True
         return None
 
-    def _unconfirmed_inputs(self, unit: UnitState) -> int | None:
+    def _unconfirmed_inputs(
+        self, unit: UnitState, *, actor_identity: ActorIdentity = original_actor
+    ) -> int | None:
+        refs = self._unconfirmed_input_refs(unit, actor_identity=actor_identity)
+        return None if refs is None else len(refs)
+
+    def _unconfirmed_input_refs(
+        self, unit: UnitState, *, actor_identity: ActorIdentity = original_actor
+    ) -> set[SourceRef] | None:
         if unit.fast_inputs is None:
             return None
         review = unit.review
-        if review is None or self._review_verdict(review, unit.binding.unit) is not True:
-            return len(unit.fast_inputs)
+        if (
+            review is None
+            or self._review_verdict(review, unit.binding.unit, actor_identity=actor_identity)
+            is not True
+        ):
+            return {item.source for item in unit.fast_inputs}
         review_order = self._source_order(review.source)
-        return sum(
-            item.source != review.source
+        return {
+            item.source
+            for item in unit.fast_inputs
+            if item.source != review.source
             and not (
                 item.sequence <= review.covered_fast_sequence
                 and (
@@ -1383,17 +1528,25 @@ class Controller:
                     )
                 )
             )
-            for item in unit.fast_inputs
-        )
+        }
 
-    def _semantic_continuation(self, unit: UnitState) -> bool:
+    def _semantic_continuation(
+        self, unit: UnitState, *, actor_identity: ActorIdentity = original_actor
+    ) -> bool:
         review = unit.review
         return review is None or (
             all(self._unit_ref_valid(ref, unit) for ref in review.basis)
-            and self._review_verdict(review, unit.binding.unit) is True
+            and self._review_verdict(review, unit.binding.unit, actor_identity=actor_identity)
+            is True
         )
 
-    def _record_unit_reviews(self, observation: Observation, event: ScopedEvent) -> None:
+    def _record_unit_reviews(
+        self,
+        observation: Observation,
+        event: ScopedEvent,
+        *,
+        actor_identity: ActorIdentity = original_actor,
+    ) -> None:
         """Attach a real result to its original borrowed relationship, in source order."""
         checkpoint = self._read_participation_checkpoint()
         if checkpoint is None:
@@ -1416,9 +1569,17 @@ class Controller:
                 origin.actor != unit.binding.actor or origin.basis != unit.binding.basis
             ):
                 continue
-            if origin is None and not original_input and resolved != unit.binding.unit:
+            if (
+                origin is None
+                and not original_input
+                and not (
+                    resolved is not None
+                    and resolved.thread == unit.binding.unit.thread
+                    and actor_identity(resolved.target) == actor_identity(unit.binding.unit.target)
+                )
+            ):
                 continue
-            if unit.binding.actor != event.author:
+            if actor_identity(unit.binding.actor) != actor_identity(event.author):
                 continue
             review = UnitSemanticReview(
                 source=event.ref,
@@ -1436,7 +1597,7 @@ class Controller:
                 if origin is not None
                 else unit.fast_sequence,
             )
-            verdict = self._review_verdict(review, unit.binding.unit)
+            verdict = self._review_verdict(review, unit.binding.unit, actor_identity=actor_identity)
             if verdict is None:
                 continue
             if verdict is False and not original_input and (origin is None or not origin.borrowed):
@@ -1469,17 +1630,24 @@ class Controller:
             checkpoint.units[key] = unit.model_copy(update=changes)
         self._save_participation(checkpoint)
 
-    def freeze_observation(self, snapshot: Snapshot) -> Snapshot:
+    def freeze_observation(
+        self, snapshot: Snapshot, *, actor_identity: ActorIdentity = original_actor
+    ) -> Snapshot:
         """Freeze existing intent and original review positions once, before HTTP."""
         checkpoint = self._participation_checkpoint()
         focus = snapshot.focus
         keys = {(focus.thread, focus.target)} | {
             (option.thread, option.target) for option in focus.unit_options
         }
+        current_keys = {(thread, actor_identity(target)) for thread, target in keys}
         units = []
         reviews = []
         matched = self._participation_view(
-            focus, snapshot.issued_at, checkpoint, check_budget=False
+            focus,
+            snapshot.issued_at,
+            checkpoint,
+            check_budget=False,
+            actor_identity=actor_identity,
         ).matched_unit
         for unit in checkpoint.units.values():
             if not self._binding_valid(
@@ -1488,7 +1656,7 @@ class Controller:
                 continue
             hint = unit.hint
             if (
-                (unit.binding.unit.thread, unit.binding.unit.target) in keys
+                (unit.binding.unit.thread, actor_identity(unit.binding.unit.target)) in current_keys
                 and hint is not None
                 and hint.delta.engage is not None
                 and hint.at <= snapshot.issued_at
@@ -1509,10 +1677,17 @@ class Controller:
             if (
                 unit.input_ref == focus.ref
                 or any(item.source == focus.ref for item in (unit.fast_inputs or ()))
-                or (matched is not None and self._same_unit_actor(matched.binding, unit.binding))
                 or (
-                    (unit.binding.unit.thread, unit.binding.unit.target) in keys
-                    and unit.binding.actor == focus.author
+                    matched is not None
+                    and matched.unit.thread == unit.binding.unit.thread
+                    and actor_identity(matched.unit.target)
+                    == actor_identity(unit.binding.unit.target)
+                    and unit.binding.actor != "SELF"
+                )
+                or (
+                    (unit.binding.unit.thread, actor_identity(unit.binding.unit.target))
+                    in current_keys
+                    and actor_identity(unit.binding.actor) == actor_identity(focus.author)
                 )
             ):
                 reviews.append(
@@ -1526,7 +1701,10 @@ class Controller:
                         or any(item.source == focus.ref for item in (unit.fast_inputs or ()))
                         or (
                             matched is not None
-                            and self._same_unit_actor(matched.binding, unit.binding)
+                            and matched.unit.thread == unit.binding.unit.thread
+                            and actor_identity(matched.unit.target)
+                            == actor_identity(unit.binding.unit.target)
+                            and unit.binding.actor != "SELF"
                         ),
                     )
                 )

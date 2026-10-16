@@ -10,6 +10,7 @@ from uuid import uuid4
 import httpx
 from pydantic import ValidationError
 
+from .controller import ActorIdentity, original_actor
 from .models import Choice, Observation, ScopedEvent, Snapshot
 from .rubric import REVISION, questions
 
@@ -17,7 +18,9 @@ PROJECTION_REVISION = "semantic-state-v2"
 
 
 class SemanticObserver(Protocol):
-    async def evaluate(self, snapshot: Snapshot) -> Observation: ...
+    async def evaluate(
+        self, snapshot: Snapshot, *, actor_identity: ActorIdentity = original_actor
+    ) -> Observation: ...
 
 
 class JevObserver:
@@ -35,11 +38,13 @@ class JevObserver:
         self._owned = client is None
         self._client = client or httpx.AsyncClient(timeout=12)
 
-    def _encode_request(self, snapshot: Snapshot) -> bytes:
+    def _encode_request(
+        self, snapshot: Snapshot, *, actor_identity: ActorIdentity = original_actor
+    ) -> bytes:
         return json.dumps(
             {
                 "model": self.model,
-                "state": self._semantic_state(snapshot),
+                "state": self._semantic_state(snapshot, actor_identity=actor_identity),
                 "questions": questions(
                     unit_options=snapshot.focus.unit_options
                     if snapshot.focus.unit_ambiguous
@@ -52,7 +57,9 @@ class JevObserver:
         ).encode("utf-8")
 
     @staticmethod
-    def _semantic_state(snapshot: Snapshot) -> dict[str, object]:
+    def _semantic_state(
+        snapshot: Snapshot, *, actor_identity: ActorIdentity = original_actor
+    ) -> dict[str, object]:
         """Project only evidence needed to interpret speech, with neutral local references.
 
         Canonical IDs/revisions, scope/generation, request sequence and absolute timestamps
@@ -78,10 +85,10 @@ class JevObserver:
         def project(event: ScopedEvent) -> dict[str, object]:
             result: dict[str, object] = {
                 "id": references[(event.ref.event_id, event.ref.revision)],
-                "author": event.author,
+                "author": actor_identity(event.author) if event.kind == "human" else event.author,
                 "kind": event.kind,
                 "thread": threads[event.thread],
-                "target": event.target,
+                "target": actor_identity(event.target),
                 "text": event.text,
                 "seconds_from_focus": round(event.at - snapshot.focus.at, 3),
             }
@@ -107,7 +114,7 @@ class JevObserver:
                 {
                     "key": option.key,
                     "thread": threads[option.thread],
-                    "target": option.target,
+                    "target": actor_identity(option.target),
                     "label": option.label,
                     **(
                         {
@@ -137,7 +144,7 @@ class JevObserver:
                 own["units"] = [
                     {
                         "thread": threads[hint.thread],
-                        "target": hint.target,
+                        "target": actor_identity(hint.target),
                         "engage": hint.engage,
                         "source_seconds_from_focus": round(hint.at - snapshot.focus.at, 3),
                     }
@@ -147,11 +154,13 @@ class JevObserver:
                 state["yuki_participation"] = own
         return state
 
-    async def evaluate(self, snapshot: Snapshot) -> Observation:
+    async def evaluate(
+        self, snapshot: Snapshot, *, actor_identity: ActorIdentity = original_actor
+    ) -> Observation:
         rubric = questions(
             unit_options=snapshot.focus.unit_options if snapshot.focus.unit_ambiguous else (),
         )
-        encoded = self._encode_request(snapshot)
+        encoded = self._encode_request(snapshot, actor_identity=actor_identity)
         result = await self._client.post(
             "https://api.typesafe.ai/v1/systemone",
             headers={
