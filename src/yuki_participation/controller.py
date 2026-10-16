@@ -1149,6 +1149,16 @@ class Controller:
             self._save_participation(checkpoint)
             self._prune()
 
+    def participation_actor_ids(self) -> frozenset[str]:
+        """Original actors/targets for Host identity lookup, without deriving eligibility."""
+        checkpoint = self._participation_checkpoint()
+        return frozenset(
+            actor
+            for unit in checkpoint.units.values()
+            if unit.binding.actor != "SELF"
+            for actor in (unit.binding.actor, unit.binding.unit.target)
+        )
+
     def participating_units(
         self, now: float, *, actor_identity: ActorIdentity = original_actor
     ) -> tuple[UnitParticipation, ...]:

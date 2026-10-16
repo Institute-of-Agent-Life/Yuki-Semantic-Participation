@@ -60,6 +60,26 @@ def population(size):
 
 
 @pytest.mark.parametrize("size", [8, 32])
+def test_actor_identity_sources_survive_retirement_without_deriving_participation(size):
+    c, _ = population(size)
+    c.advance(1310, controller_epoch=0, host_available=False)
+    assert not c.state.events
+    before = c.state.model_dump_json()
+    with (
+        patch.object(c, "participating_units", side_effect=AssertionError("derived participation")),
+        patch.object(c, "_current_units", side_effect=AssertionError("current identity view")),
+        patch.object(c, "_belief_actions", side_effect=AssertionError("global action replay")),
+        patch.object(UnitState, "model_validate", side_effect=AssertionError("unit reparse")),
+        patch.object(
+            ParticipationCheckpoint, "model_validate", wraps=ParticipationCheckpoint.model_validate
+        ) as decode,
+    ):
+        assert c.participation_actor_ids() == frozenset(f"person-{index}" for index in range(size))
+        assert decode.call_count == 1
+    assert c.state.model_dump_json() == before
+
+
+@pytest.mark.parametrize("size", [8, 32])
 def test_participation_and_freeze_decode_once_without_computing_belief(size):
     c, _ = population(size)
     focus = c.state.events["focus-0"]
