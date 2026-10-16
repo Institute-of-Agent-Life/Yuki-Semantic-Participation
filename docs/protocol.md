@@ -90,6 +90,9 @@ last_failure 只留类别、HTTP 状态、时间和可信来源，不保存异�
 ## 普通参与与有限快路
 
 `participating_units` 返回真实保留状态，包含 quiet/closed，Host 的 active 消费者才排除它们。
+`participation_actor_ids` 只读取原 checkpoint 中真人单元的 actor/target ID，供 Host 批量准备
+当前身份关系；不推导参与、计数、语义复核或概率，不改原事件与检查点。来源页 hydrate 不为
+收集人物 ID 调用完整 `participating_units`；原事件正文退休后仍可从保留单元准备这些身份。
 `participation_view` 返回来源有效性、真实解析、候选/匹配及 needs_observation，不排队、不消费、不采样。
 `UnitParticipation` 只包含参与事实和快捷匹配需要的字段；未使用的 `belief` 展示字段已删除。
 真实自主概率仍由 `Controller.belief` 按原观察、输入、表达和衰减计算。
