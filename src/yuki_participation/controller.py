@@ -694,6 +694,9 @@ class Controller:
         return True
 
     def _participation_checkpoint(self) -> ParticipationCheckpoint:
+        return self._read_participation_checkpoint() or ParticipationCheckpoint()
+
+    def _read_participation_checkpoint(self) -> ParticipationCheckpoint | None:
         raw = self.state.host_checkpoint.get(CHECKPOINT_KEY)
         if raw is None:
             return ParticipationCheckpoint()
@@ -701,15 +704,17 @@ class Controller:
             return ParticipationCheckpoint.model_validate(raw)
         except ValueError:
             # Unknown extensions are retained, but never used as relationship evidence.
-            return ParticipationCheckpoint()
+            return None
 
-    def _binding_valid(self, binding: UnitBinding) -> bool:
+    def _binding_valid(
+        self, binding: UnitBinding, checkpoint: ParticipationCheckpoint | None
+    ) -> bool:
         if binding.scope != self.state.scope:
             return False
         retired = {r for r in binding.basis if not self._valid(r)}
         if not retired:
             return True
-        known = self._known_participation_refs(binding)
+        known = self._known_participation_refs(binding, checkpoint)
         return all(self._retired_participation_ref_valid(ref, known) for ref in retired)
 
     def _unit_expression_ids(self, checkpoint: ParticipationCheckpoint) -> set[str]:
@@ -759,31 +764,30 @@ class Controller:
             and ref in known
         )
 
-    def _known_participation_refs(self, binding: UnitBinding) -> set[SourceRef]:
-        raw = self.state.host_checkpoint.get(CHECKPOINT_KEY)
-        if not isinstance(raw, dict) or raw.get("version") != 1:
-            return set()
+    def _known_participation_refs(
+        self, binding: UnitBinding, checkpoint: ParticipationCheckpoint | None
+    ) -> set[SourceRef]:
         key = self._unit_key(binding.unit.thread, binding.unit.target)
-        units = raw.get("units")
-        if not isinstance(units, dict) or key not in units:
-            return set()
-        try:
-            unit = UnitState.model_validate(units[key])
-        except ValueError:
-            return set()
-        if not self._same_unit_actor(unit.binding, binding):
-            return set()
-        return set(unit.retired_refs)
-
-    def _participation_writable(self) -> bool:
-        raw = self.state.host_checkpoint.get(CHECKPOINT_KEY)
-        if raw is None:
-            return True
-        try:
-            ParticipationCheckpoint.model_validate(raw)
-        except ValueError:
-            return False
-        return True
+        if checkpoint is not None:
+            unit = checkpoint.units.get(key)
+        else:
+            # The existing single-unit continuation reader can recognize its
+            # original proof even when it cannot write an extended namespace.
+            raw = self.state.host_checkpoint.get(CHECKPOINT_KEY)
+            if not isinstance(raw, dict) or raw.get("version") != 1:
+                return set()
+            units = raw.get("units")
+            if not isinstance(units, dict) or key not in units:
+                return set()
+            try:
+                unit = UnitState.model_validate(units[key])
+            except ValueError:
+                return set()
+        return (
+            set(unit.retired_refs)
+            if unit is not None and self._same_unit_actor(unit.binding, binding)
+            else set()
+        )
 
     def _unit_closed(self, unit: ParticipationUnit) -> bool:
         return any(
@@ -807,8 +811,8 @@ class Controller:
 
     @classmethod
     def _bound_to_unit(cls, binding: UnitBinding, unit: UnitState) -> bool:
-        return cls._same_unit_actor(binding, unit.binding) and all(
-            ref in binding.basis for ref in unit.binding.basis
+        return cls._same_unit_actor(binding, unit.binding) and set(unit.binding.basis).issubset(
+            binding.basis
         )
 
     def observe_unit_input(
@@ -816,9 +820,10 @@ class Controller:
     ) -> bool:
         """Replay one real admission; only its original continuation fact spends review span."""
         event = self.state.events.get(event_ref.event_id)
+        checkpoint = self._read_participation_checkpoint()
         if (
-            not self._participation_writable()
-            or not self._binding_valid(binding)
+            checkpoint is None
+            or not self._binding_valid(binding, checkpoint)
             or event is None
             or event.ref != event_ref
             or not self._valid(event_ref)
@@ -826,7 +831,6 @@ class Controller:
             or binding.actor != event.author
         ):
             return False
-        checkpoint = self._participation_checkpoint()
         key = self._unit_key(binding.unit.thread, binding.unit.target)
         old = checkpoint.units.get(key)
         if old is not None and not self._same_unit_actor(old.binding, binding):
@@ -884,7 +888,7 @@ class Controller:
             event_ref.revision, self.state.consumed.get(event_ref.event_id, 0)
         )
         self._save_participation(checkpoint)
-        self._prune_participation()
+        self._prune_participation(checkpoint)
         return True
 
     def observe_unit_expression(
@@ -896,9 +900,10 @@ class Controller:
         anchor: SourceRef | None = None,
     ) -> bool:
         """Associate a confirmed logical expression without altering its transport target."""
+        checkpoint = self._read_participation_checkpoint()
         if (
-            not self._participation_writable()
-            or not self._binding_valid(binding)
+            checkpoint is None
+            or not self._binding_valid(binding, checkpoint)
             or effect.kind != "message"
             or not run_ref
             or (
@@ -907,7 +912,6 @@ class Controller:
             )
         ):
             return False
-        checkpoint = self._participation_checkpoint()
         association = ExpressionBinding(binding=binding, anchor=anchor)
         old = checkpoint.expressions.get(effect.effect_id)
         if old is not None:
@@ -952,18 +956,18 @@ class Controller:
             update={"last_at": max(effect.at, unit.last_at), "anchors": anchors}
         )
         self._save_participation(checkpoint)
-        self._prune_participation()
+        self._prune_participation(checkpoint)
         return True
 
     def observe_unit_hint(self, binding: UnitBinding, report: SelfReport) -> bool:
         """Optional own intent from a Host-bound Main response; it is not a user stop."""
+        checkpoint = self._read_participation_checkpoint()
         if (
-            not self._participation_writable()
-            or not self._binding_valid(binding)
+            checkpoint is None
+            or not self._binding_valid(binding, checkpoint)
             or report.delta.engage is None
         ):
             return False
-        checkpoint = self._participation_checkpoint()
         key = self._unit_key(binding.unit.thread, binding.unit.target)
         old = checkpoint.units.get(key)
         if old is None or not self._bound_to_unit(binding, old):
@@ -1006,7 +1010,7 @@ class Controller:
             }
         )
         self._save_participation(checkpoint)
-        self._prune_participation()
+        self._prune_participation(checkpoint)
         return True
 
     def _hint_source(self, report: SelfReport, basis: tuple[SourceRef, ...]) -> SourceRef | None:
@@ -1023,14 +1027,15 @@ class Controller:
         )
         return sources[0] if len(sources) == 1 else None
 
-    def _prune_participation(self) -> None:
-        if not self._participation_writable():
+    def _prune_participation(self, checkpoint: ParticipationCheckpoint | None = None) -> None:
+        if checkpoint is None:
+            checkpoint = self._read_participation_checkpoint()
+        if checkpoint is None:
             return
-        checkpoint = self._participation_checkpoint()
         expressions = {
             k: v
             for k, v in checkpoint.expressions.items()
-            if k in self.state.effects and self._binding_valid(v.binding)
+            if k in self.state.effects and self._binding_valid(v.binding, checkpoint)
         }
         units = {
             k: v.model_copy(
@@ -1045,7 +1050,7 @@ class Controller:
                 }
             )
             for k, v in checkpoint.units.items()
-            if self._binding_valid(v.binding) and self._unit_interpretation_valid(v)
+            if self._binding_valid(v.binding, checkpoint) and self._unit_interpretation_valid(v)
         }
         # Use the existing bounded discussion resource policy, not a conversation expiry rule.
         if len(units) > 64:
@@ -1058,13 +1063,24 @@ class Controller:
 
     def _retire_participation(self, boundary: float) -> ParticipationCheckpoint:
         """Fold only already verified unit identities before dropping raw interpretation."""
-        checkpoint = self._participation_checkpoint()
-        if not self._participation_writable():
-            return checkpoint
+        checkpoint = self._read_participation_checkpoint()
+        if checkpoint is None:
+            return ParticipationCheckpoint()
         units = {}
         expressions = self._unit_expression_ids(checkpoint)
+        expression_refs: dict[str, set[SourceRef]] = {}
+        for effect_id in expressions:
+            association = checkpoint.expressions[effect_id]
+            key = self._unit_key(association.binding.unit.thread, association.binding.unit.target)
+            original = checkpoint.units.get(key)
+            if original is not None and self._same_unit_actor(
+                association.binding, original.binding
+            ):
+                expression_refs.setdefault(key, set()).update(association.binding.basis)
         for key, unit in checkpoint.units.items():
-            if not self._binding_valid(unit.binding) or not self._unit_interpretation_valid(unit):
+            if not self._binding_valid(
+                unit.binding, checkpoint
+            ) or not self._unit_interpretation_valid(unit):
                 continue
             retired_anchors = [
                 r
@@ -1091,10 +1107,7 @@ class Controller:
                 *(unit.review.basis if unit.review else ()),
                 *(item.source for item in (unit.fast_inputs or ())),
             }
-            for effect_id in expressions:
-                association = checkpoint.expressions[effect_id]
-                if self._same_unit_actor(association.binding, unit.binding):
-                    refs.update(association.binding.basis)
+            refs.update(expression_refs.get(key, ()))
             retired = tuple(
                 sorted(
                     (
@@ -1118,9 +1131,9 @@ class Controller:
         # Retire derived units under the existing fingerprint resource bound. Never
         # revive raw sources or block an execution merely to retain a relationship.
         self._prune()
-        while len(self.state.seen) >= 1024 and self._participation_writable():
-            checkpoint = self._participation_checkpoint()
-            if not checkpoint.units:
+        while len(self.state.seen) >= 1024:
+            checkpoint = self._read_participation_checkpoint()
+            if checkpoint is None or not checkpoint.units:
                 return
             oldest = min(checkpoint.units, key=lambda k: (checkpoint.units[k].last_at, k))
             checkpoint.units.pop(oldest)
@@ -1129,16 +1142,20 @@ class Controller:
 
     def participating_units(self, now: float) -> tuple[UnitParticipation, ...]:
         """Read existing ordinary and SELF units; never queue, consume, or advance."""
-        checkpoint = self._participation_checkpoint()
+        return self._participating_units(now, self._participation_checkpoint())
+
+    def _participating_units(
+        self, now: float, checkpoint: ParticipationCheckpoint
+    ) -> tuple[UnitParticipation, ...]:
         units = {
             k: v
             for k, v in checkpoint.units.items()
-            if self._binding_valid(v.binding) and self._unit_interpretation_valid(v)
+            if self._binding_valid(v.binding, checkpoint) and self._unit_interpretation_valid(v)
         }
         expressed = {
             self._unit_key(v.binding.unit.thread, v.binding.unit.target)
             for effect_id, v in checkpoint.expressions.items()
-            if self._binding_valid(v.binding)
+            if self._binding_valid(v.binding, checkpoint)
             and (
                 bound_unit := units.get(
                     self._unit_key(v.binding.unit.thread, v.binding.unit.target)
@@ -1150,17 +1167,16 @@ class Controller:
             and record.effect.kind == "message"
             and record.effect.at <= now
         }
+        anchors_by_run: dict[str, list[SourceRef]] = {}
+        for key, value in self.state.outbound_anchors.items():
+            event = self.state.events.get(key)
+            if event is not None and self._valid(event.ref):
+                anchors_by_run.setdefault(value.run_ref, []).append(event.ref)
         for record in self.state.effects.values():
             proposal = self.state.proposals.get(record.proposal_id)
             if proposal is None or record.effect.kind != "message" or record.effect.at > now:
                 continue
-            anchors = tuple(
-                event.ref
-                for key, value in self.state.outbound_anchors.items()
-                if value.run_ref == record.run_ref
-                and (event := self.state.events.get(key))
-                and self._valid(event.ref)
-            )
+            anchors = tuple(anchors_by_run.get(record.run_ref, ()))
             basis = tuple(r for r in proposal.sources if self._valid(r)) or anchors
             if not basis:
                 continue
@@ -1176,17 +1192,25 @@ class Controller:
                     anchors=anchors,
                     fast_inputs=(),
                 )
+        closed_units = {
+            (b.thread, b.target) for b in self.state.boundaries.values() if b.released_by is None
+        }
+        closed_threads = {
+            b.thread
+            for b in self.state.boundaries.values()
+            if b.released_by is None and b.group_wide
+        }
         return tuple(
             UnitParticipation(
                 binding=v.binding,
-                belief=self.belief(v.binding.unit.thread, v.binding.unit.target, now),
                 last_at=v.last_at,
                 anchors=tuple(r for r in v.anchors if self._unit_ref_valid(r, v)),
                 engage=v.hint.delta.engage
                 if v.hint and all(self._unit_ref_valid(r, v) for r in v.hint_basis)
                 else None,
                 expressed=self._unit_key(v.binding.unit.thread, v.binding.unit.target) in expressed,
-                closed=self._unit_closed(v.binding.unit),
+                closed=(v.binding.unit.thread, v.binding.unit.target) in closed_units
+                or v.binding.unit.thread in closed_threads,
                 unconfirmed_inputs=self._unconfirmed_inputs(v),
                 semantic_continuation=self._semantic_continuation(v),
             )
@@ -1208,6 +1232,18 @@ class Controller:
         self, event: ScopedEvent, now: float, *, check_budget: bool = True
     ) -> ParticipationView:
         """Relationship candidates are distinct from the focus's observed resolution."""
+        return self._participation_view(
+            event, now, self._participation_checkpoint(), check_budget=check_budget
+        )
+
+    def _participation_view(
+        self,
+        event: ScopedEvent,
+        now: float,
+        checkpoint: ParticipationCheckpoint,
+        *,
+        check_budget: bool,
+    ) -> ParticipationView:
         valid = event.scope == self.state.scope and self._valid(event.ref)
         if not valid:
             return ParticipationView(
@@ -1217,7 +1253,7 @@ class Controller:
         observed = self.state.observations.get(event.ref.event_id)
         resolved = self._resolved_event(event)
         current_resolved = observed is not None and not resolved.unit_ambiguous
-        units = self.participating_units(now)
+        units = self._participating_units(now, checkpoint)
         candidates = tuple(
             u
             for u in units
@@ -1253,7 +1289,6 @@ class Controller:
                 binding=UnitBinding(
                     scope=self.state.scope, unit=unit, actor=event.author, basis=(event.ref,)
                 ),
-                belief=self.belief(unit.thread, unit.target, now),
                 last_at=event.at,
                 closed=self._unit_closed(unit),
             )
@@ -1287,14 +1322,17 @@ class Controller:
     ) -> bool:
         """Recheck an unadmitted opportunity at the original Host boundary; no I/O."""
         event = self.state.events.get(event_ref.event_id)
+        checkpoint = self._read_participation_checkpoint()
         if (
             event is None
             or event.ref != event_ref
             or binding.actor != event.author
-            or not self._binding_valid(binding)
+            or not self._binding_valid(binding, checkpoint)
         ):
             return False
-        matched = self.participation_view(event, now, check_budget=check_budget).matched_unit
+        matched = self._participation_view(
+            event, now, checkpoint or ParticipationCheckpoint(), check_budget=check_budget
+        ).matched_unit
         return (
             matched is not None
             and matched.binding.scope == binding.scope
@@ -1357,9 +1395,9 @@ class Controller:
 
     def _record_unit_reviews(self, observation: Observation, event: ScopedEvent) -> None:
         """Attach a real result to its original borrowed relationship, in source order."""
-        if not self._participation_writable():
+        checkpoint = self._read_participation_checkpoint()
+        if checkpoint is None:
             return
-        checkpoint = self._participation_checkpoint()
         frozen = {
             self._unit_key(item.thread, item.target): item
             for item in observation.snapshot.unit_reviews
@@ -1440,11 +1478,13 @@ class Controller:
         }
         units = []
         reviews = []
-        matched = self.participation_view(
-            focus, snapshot.issued_at, check_budget=False
+        matched = self._participation_view(
+            focus, snapshot.issued_at, checkpoint, check_budget=False
         ).matched_unit
         for unit in checkpoint.units.values():
-            if not self._binding_valid(unit.binding) or not self._unit_interpretation_valid(unit):
+            if not self._binding_valid(
+                unit.binding, checkpoint
+            ) or not self._unit_interpretation_valid(unit):
                 continue
             hint = unit.hint
             if (
@@ -1541,60 +1581,64 @@ class Controller:
             familiarities.pop(oldest)
         self._set(familiarities=familiarities)
 
-    def _belief_actions(self, thread: str, target: str) -> list[BeliefAction]:
-        actions: list[BeliefAction] = []
+    def _belief_actions(
+        self, checkpoint: ParticipationCheckpoint
+    ) -> dict[tuple[str, str], list[BeliefAction]]:
+        """Group current facts once for this synchronous calculation, never across mutations."""
+        actions: dict[tuple[str, str], list[BeliefAction]] = {}
         for obs in self.state.observations.values():
             event = self.state.events.get(obs.snapshot.focus.event_id)
             if event is not None:
                 event = self._resolved_event(event)
             if (
                 event is not None
-                and event.thread == thread
-                and event.target == target
                 and self._valid(event.ref)
                 and event.kind == "human"
                 and not event.unit_ambiguous
             ):
-                actions.append((event.at, "human", event.ref.event_id, obs))
-        checkpoint = self._participation_checkpoint()
+                actions.setdefault((event.thread, event.target), []).append(
+                    (event.at, "human", event.ref.event_id, obs)
+                )
         for unit in checkpoint.units.values():
             ref = unit.input_ref
             event = self.state.events.get(ref.event_id) if ref is not None else None
             if (
                 event is not None
                 and event.ref == ref
-                and self._binding_valid(unit.binding)
-                and unit.binding.unit.thread == thread
-                and unit.binding.unit.target == target
                 and event.ref.event_id not in self.state.observations
+                and self._binding_valid(unit.binding, checkpoint)
             ):
-                actions.append((event.at, "human", event.ref.event_id, unit))
+                key = (unit.binding.unit.thread, unit.binding.unit.target)
+                actions.setdefault(key, []).append((event.at, "human", event.ref.event_id, unit))
         for record in self.state.effects.values():
+            if record.effect.kind != "message":
+                continue
             proposal = self.state.proposals.get(record.proposal_id)
             association = checkpoint.expressions.get(record.effect.effect_id)
-            bound = (
-                association is not None
-                and self._binding_valid(association.binding)
-                and association.binding.unit.thread == thread
-                and association.binding.unit.target == target
+            units = (
+                {(proposal.thread, target) for target in record.effect.actual_targets}
+                if proposal is not None
+                else set()
             )
-            if (
-                bound
-                or (
-                    proposal
-                    and proposal.thread == thread
-                    and target in record.effect.actual_targets
+            if association is not None and self._binding_valid(association.binding, checkpoint):
+                units.add((association.binding.unit.thread, association.binding.unit.target))
+            for key in units:
+                actions.setdefault(key, []).append(
+                    (record.effect.at, "self", record.effect.effect_id, record)
                 )
-            ) and record.effect.kind == "message":
-                actions.append((record.effect.at, "self", record.effect.effect_id, record))
         return actions
 
     def belief(self, thread: str, target: str, now: float) -> dynamics.Belief:
+        actions = self._belief_actions(self._participation_checkpoint())
+        return self._belief_from_actions(thread, target, now, actions.get((thread, target), []))
+
+    def _belief_from_actions(
+        self, thread: str, target: str, now: float, actions: list[BeliefAction]
+    ) -> dynamics.Belief:
         baseline = self.state.belief_baselines.get(self._unit_key(thread, target))
         if baseline is not None and now < baseline.at:
             # Retired history is not a queryable historical reconstruction.
             return dynamics.IDLE
-        actions = self._belief_actions(thread, target)
         b = baseline.value if baseline else dynamics.IDLE
         last = baseline.at if baseline else min((a[0] for a in actions), default=now)
         for at, _kind, _, value in sorted(actions, key=lambda x: x[:3]):
@@ -1616,16 +1660,20 @@ class Controller:
             last = at
         return dynamics.decay(b, now - last)
 
-    def _advance_replay_boundary(self, boundary: float) -> None:
+    def _advance_replay_boundary(
+        self, boundary: float, checkpoint: ParticipationCheckpoint | None = None
+    ) -> None:
         if boundary <= self.state.replay_after or boundary < 0:
             return
+        if checkpoint is None:
+            checkpoint = self._participation_checkpoint()
         units = {
             (baseline.thread, baseline.target) for baseline in self.state.belief_baselines.values()
         }
         units.update(
             (v.binding.unit.thread, v.binding.unit.target)
-            for v in self._participation_checkpoint().units.values()
-            if self._binding_valid(v.binding)
+            for v in checkpoint.units.values()
+            if self._binding_valid(v.binding, checkpoint)
         )
         for observation in self.state.observations.values():
             event = self.state.events.get(observation.snapshot.focus.event_id)
@@ -1637,16 +1685,18 @@ class Controller:
             if proposal and record.effect.kind == "message":
                 units.update((proposal.thread, target) for target in record.effect.actual_targets)
         prepared = []
+        actions_by_unit = self._belief_actions(checkpoint)
         for thread, target in units:
             key = self._unit_key(thread, target)
             previous = self.state.belief_baselines.get(key)
             last_action = previous.last_action if previous else -1.0
+            actions = actions_by_unit.get((thread, target), [])
             last_action = max(
                 last_action,
                 max(
                     (
                         action[0]
-                        for action in self._belief_actions(thread, target)
+                        for action in actions
                         if self.state.replay_after < action[0] <= boundary
                     ),
                     default=-1.0,
@@ -1661,7 +1711,7 @@ class Controller:
                         thread=thread,
                         target=target,
                         at=boundary,
-                        value=self.belief(thread, target, boundary),
+                        value=self._belief_from_actions(thread, target, boundary, actions),
                         last_action=last_action,
                     ),
                 )
@@ -1835,6 +1885,8 @@ class Controller:
         raw: dict[str, float] = {}
         context = self._social_context(now)
         pressure = self._autonomy_pressure(now)
+        actions_by_unit: dict[tuple[str, str], list[BeliefAction]] | None = None
+        last_human_by_unit: dict[tuple[str, str], float] = {}
         for key, members in self._eligible_groups(
             now, include_addressed=include_addressed, allowed_kinds=allowed_kinds
         ).items():
@@ -1850,7 +1902,21 @@ class Controller:
             if any(self._addressed(member) for member in members):
                 raw[key] = max(member.value.value * member.floor.value for member in members)
                 continue
-            b = self.belief(candidate.event.thread, candidate.event.target, now)
+            if actions_by_unit is None:
+                actions_by_unit = self._belief_actions(self._participation_checkpoint())
+                for original in self.state.events.values():
+                    event = self._resolved_event(original)
+                    if (
+                        event.scope == self.state.scope
+                        and event.kind == "human"
+                        and not event.unit_ambiguous
+                        and event.at <= now
+                        and self._valid(event.ref)
+                    ):
+                        unit = (event.thread, event.target)
+                        last_human_by_unit[unit] = max(last_human_by_unit.get(unit, 0), event.at)
+            unit = (candidate.event.thread, candidate.event.target)
+            b = self._belief_from_actions(*unit, now, actions_by_unit.get(unit, []))
             x = dynamics.aggregate_attention(
                 [
                     (member.value.value, member.event.at, member.support.issued_at)
@@ -1859,20 +1925,7 @@ class Controller:
                 now,
                 tau,
             )
-            last_human_fragment = max(
-                (
-                    event.at
-                    for event in (self._resolved_event(e) for e in self.state.events.values())
-                    if event.scope == self.state.scope
-                    and event.kind == "human"
-                    and not event.unit_ambiguous
-                    and event.thread == candidate.event.thread
-                    and event.target == candidate.event.target
-                    and event.at <= now
-                    and self._valid(event.ref)
-                ),
-                default=candidate.event.at,
-            )
+            last_human_fragment = last_human_by_unit.get(unit, candidate.event.at)
             human_sources = [
                 (member.value.value, member.event.at, member.support.issued_at)
                 for member in members
@@ -2491,7 +2544,7 @@ class Controller:
         checkpoint = self._retire_participation(boundary)
         participation_refs = {r.event_id for r in self._participation_refs(checkpoint)}
         expression_ids = self._unit_expression_ids(checkpoint)
-        self._advance_replay_boundary(boundary)
+        self._advance_replay_boundary(boundary, checkpoint)
         # Drop invalidated/consumed fingerprints only with their source window. Older sources
         # cannot re-enter through observe_committed_event's time fence.
         for key, event in list(self.state.events.items()):

@@ -73,7 +73,6 @@ class ParticipationCheckpoint(Record):
 
 class UnitParticipation(Record):
     binding: UnitBinding
-    belief: tuple[float, float, float, float, float]
     last_at: Timestamp
     anchors: tuple[SourceRef, ...] = ()
     engage: Literal["join", "stay", "quiet"] | None = None
