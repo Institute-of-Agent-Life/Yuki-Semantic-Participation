@@ -12,7 +12,7 @@ from dataclasses import asdict
 import httpx
 from pydantic import TypeAdapter
 
-from .controller import Controller
+from .controller import ActorIdentity, Controller, original_actor
 from .models import CandidateKind, ScopedEvent, Snapshot, SourceRef
 from .observer import SemanticObserver
 from .scheduling import ObservationQueue, ProviderHealth
@@ -92,7 +92,9 @@ class ObservationSession:
         self.checkpoint()
         return True
 
-    async def evaluate_due(self, now: float, *, active: bool) -> bool:
+    async def evaluate_due(
+        self, now: float, *, active: bool, actor_identity: ActorIdentity = original_actor
+    ) -> bool:
         """At most one real request. Inputs may arrive while HTTP is in progress."""
         self.queue.discard_unavailable(now, self.controller.state.events)
         self.checkpoint()
@@ -105,16 +107,22 @@ class ObservationSession:
         )
         if snapshot is None:
             return False
-        snapshot = self.controller.freeze_observation(snapshot)
+        snapshot = self.controller.freeze_observation(snapshot, actor_identity=actor_identity)
         self.queue.in_flight = snapshot
         self.checkpoint()
         try:
-            observation = await self.observer.evaluate(snapshot)
+            observation = (
+                await self.observer.evaluate(snapshot)
+                if actor_identity is original_actor
+                else await self.observer.evaluate(snapshot, actor_identity=actor_identity)
+            )
             # Provider identity checks and payload parsing belong to the adapter. A custom
             # observer must still return the exact snapshot actually submitted.
             if observation.snapshot != snapshot:
                 raise ValueError("observation_snapshot_mismatch")
-            applied = self.controller.apply_semantic_observation(observation)
+            applied = self.controller.apply_semantic_observation(
+                observation, actor_identity=actor_identity
+            )
             required = {"interaction_mark", "information_state", "floor_state"}
             if not required <= observation.answers.keys():
                 # Keep usable partial interpretation (e.g. an actual stop), but repeated
