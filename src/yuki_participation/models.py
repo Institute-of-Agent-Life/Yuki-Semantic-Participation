@@ -34,6 +34,19 @@ class HostUnitOption(Record):
     self_anchor: SourceRef | None = None
 
 
+class EventMention(Record):
+    """Original native target and rendered position supplied by the Host."""
+
+    kind: str
+    display_name: str
+    account_id: str | None = None
+    assignment_id: str | None = None
+    person_id: str | None = None
+    presence_id: str | None = None
+    text_start: int | None = None
+    text_end: int | None = None
+
+
 class ScopedEvent(Record):
     scope: Scope
     ref: SourceRef
@@ -47,6 +60,7 @@ class ScopedEvent(Record):
     unit_ambiguous: bool = False
     unit_options: tuple[HostUnitOption, ...] = ()
     observation_priority: bool = False
+    mentions: tuple[EventMention, ...] = ()
     source_order: int | None = Field(default=None, ge=0)
 
     @model_validator(mode="after")

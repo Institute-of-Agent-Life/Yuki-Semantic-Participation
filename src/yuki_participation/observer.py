@@ -14,7 +14,7 @@ from .controller import ActorIdentity, original_actor
 from .models import Choice, Observation, ScopedEvent, Snapshot
 from .rubric import REVISION, questions
 
-PROJECTION_REVISION = "semantic-state-v2"
+PROJECTION_REVISION = "semantic-state-v3"
 
 
 class SemanticObserver(Protocol):
@@ -80,6 +80,18 @@ class JevObserver:
                 start=1,
             )
         }
+        accounts = {
+            account: f"a{index}"
+            for index, account in enumerate(
+                dict.fromkeys(
+                    mention.account_id
+                    for event in events
+                    for mention in event.mentions
+                    if mention.account_id is not None
+                ),
+                start=1,
+            )
+        }
         missing_references: dict[tuple[str, int], str] = {}
 
         def project(event: ScopedEvent) -> dict[str, object]:
@@ -92,6 +104,26 @@ class JevObserver:
                 "text": event.text,
                 "seconds_from_focus": round(event.at - snapshot.focus.at, 3),
             }
+            if event.mentions:
+                result["mentions"] = [
+                    {
+                        "kind": mention.kind,
+                        "display_name": mention.display_name,
+                        **({"account": accounts[mention.account_id]} if mention.account_id else {}),
+                        **(
+                            {"person": actor_identity(mention.person_id)}
+                            if mention.person_id
+                            else {}
+                        ),
+                        **(
+                            {"text_start": mention.text_start}
+                            if mention.text_start is not None
+                            else {}
+                        ),
+                        **({"text_end": mention.text_end} if mention.text_end is not None else {}),
+                    }
+                    for mention in event.mentions
+                ]
             if event.reply_to:
                 anchor = (event.reply_to.event_id, event.reply_to.revision)
                 if anchor in references:
