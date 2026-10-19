@@ -12,7 +12,7 @@
 | 部分 | 当前实现 | 验证与边界 |
 | --- | --- | --- |
 | 新观察 | 仅 human 焦点及 conversation；真实 human/self context | 无后台种子、seed_fit、新 recall/contact 候选或 claim/attempt |
-| Jev | 默认 jev-1.13.0，semantic-state-v2 / v6-zh-5 | 原生 model/state/questions；新投影尚无真实模型准确率结论 |
+| Jev | 默认 jev-1.13.0，semantic-state-v3 / v6-zh-5 | 原生 model/state/questions；新投影尚无真实模型准确率结论 |
 | 意愿投影 | 局部 engage 与可选 SELF scope intent，原队列取出时冻结 | quiet 不是真人 stop，歧义选项分别映射，未知不默认 stay |
 | 普通快路 | Main 不等待 Jev；原真人焦点可并行复核 | 已接纳不冒充已理解，不二次激活已接纳输入 |
 | 有限复核 | continuation_review_span 默认 4；按原快接输入计数 | own stay/send、unknown、缺维度或超时均不续确认 |
@@ -71,7 +71,7 @@ quiet 不被旧正结果/真实发送复活、重复 hydrate/恢复不重复计�
 Host 还须核原接纳、防重、原 Work/Presence、私有资料、上下文装配、统一出口与真实缓存 usage。
 当前测试不访问主模型或 QQ，不能证明用户实际感到少刷屏、模型更准确或生产已经载入新参数。
 
-以下历史探针和报告保留其当时事实，不作为 v6-zh-5 / semantic-state-v2 的真实请求验收。
+以下历史探针和报告保留其当时事实，不作为 v6-zh-5 / semantic-state-v3 的真实请求验收。
 
 ## 历史真实合成 Jev 探针
 

@@ -32,6 +32,7 @@ def save_historical_wire(store, state):
     raw = state.model_dump(mode="json")
     for original_event in raw["events"].values():
         original_event.pop("source_order", None)
+        original_event.pop("mentions", None)
     for seen in raw["seen"].values():
         seen.pop("source_order", None)
     for report in (*raw["self_reports"].values(), raw["engagement_report"]):

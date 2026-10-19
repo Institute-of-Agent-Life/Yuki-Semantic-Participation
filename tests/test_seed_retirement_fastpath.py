@@ -238,7 +238,7 @@ def test_real_encoder_projects_frozen_related_intent_and_existing_thread_map(eng
         "engage": engage,
         "source_seconds_from_focus": -1.0,
     }
-    assert state["projection_revision"] == "semantic-state-v2"
+    assert state["projection_revision"] == "semantic-state-v3"
     assert "source_order" not in encoded.decode()
     assert "response" not in state["yuki_participation"]
     assert "seed_fit" not in payload["questions"]
@@ -248,7 +248,7 @@ def test_real_encoder_projects_frozen_related_intent_and_existing_thread_map(eng
         report("quiet" if engage != "quiet" else "join", at=103, response="new-state", sequence=2),
     )
     assert JevObserver("synthetic-not-a-credential")._encode_request(snapshot) == original_bytes
-    assert snapshot.projection_revision == "semantic-state-v2"
+    assert snapshot.projection_revision == "semantic-state-v3"
     assert snapshot.participation.units[0].engage == engage
 
 

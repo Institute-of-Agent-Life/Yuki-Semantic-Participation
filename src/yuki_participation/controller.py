@@ -1734,7 +1734,7 @@ class Controller:
         )
         return snapshot.model_copy(
             update={
-                "projection_revision": "semantic-state-v2",
+                "projection_revision": "semantic-state-v3",
                 "participation": ParticipationContext(
                     scope_intent=scope_intent, units=tuple(units)
                 ),

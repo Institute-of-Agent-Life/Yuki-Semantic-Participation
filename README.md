@@ -21,7 +21,7 @@ Yuki 的群聊语义观察与自主参与控制器。它接收 Host 已入账、
 
 已有真人焦点的请求冻结局部 engage 和可选 SELF 整体意愿，帮助 Jev 区分退出后的新邀请
 与他人交流。意愿不是聊天发言、真人 stop 或授权，也不因更新状态而额外调用模型。
-当前投影为 `semantic-state-v2`，rubric 为 `v6-zh-5`，默认 Jev 模型为 `jev-1.13.0`。
+当前投影为 `semantic-state-v3`，rubric 为 `v6-zh-5`，默认 Jev 模型为 `jev-1.13.0`。
 缺状态保持未知，无消费者的 mood 已退出新自报。
 
 参与查询不再重算未使用的 `UnitParticipation.belief`。自主评分与历史折叠在一次调用内
