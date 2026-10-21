@@ -185,7 +185,9 @@ async def test_large_source_uses_real_provider_failure_and_health():
         return httpx.Response(429)
 
     async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
-        observer = JevObserver("synthetic-key", client=client)
+        observer = JevObserver(
+            "synthetic-key", identity=lambda: {"display_name": "Yuki", "aliases": ()}, client=client
+        )
         session = ObservationSession(controller(), observer)
         oversized = event().model_copy(update={"text": "文" * 6000})
         queue_observation(session, oversized)

@@ -13,14 +13,14 @@ Host 完成 canonical 入库、来源版本、可见性和授权后提供 Scoped
 真实 SELF 发言可作上下文和原表达锚点，不作新观察焦点；后台 Memory 不再构造 seed。
 thread、target、unit_options 及其中的 new 均由 Host 提供，Jev 只能选既有组合或 unknown，
 Controller 复核完整分布、唯一赢家及其选项，不让模型制造身份或讨论 ID。
-名字提及只提高观察优先级，不等同 @ 或授权。明确邀请且楼层留给 Yuki 时，
+名字提及只提高观察优先级，不等同 @ 或授权。明确邀请且楼层留给当前 Agent 时，
 即使旧讨论归属 unknown，仍可采用 Host 已给出且核验的新讨论单元。
 
 `ScopedEvent.mentions` 接收 Host 的原生提及快照：kind、display_name、原文位置和可证明的内部
 Account／Assignment／Person／Presence。顺序、重复、未知目标及未知位置均保留；正文中的普通
 `@文字` 不生成此事实。提及不改 ScopedEvent.target 或讨论单元，它们仍表示原参与对象。
 Jev 新请求提供原位 mentions：人物沿同作者的当前人物投影比较，账号仅用请求内 aN 关联，
-Assignment／Presence ID 留在本地原 Snapshot。kind=yuki 明确提到 Yuki，member 和 all 保原语义。
+Assignment／Presence ID 留在本地原 Snapshot。kind=yuki 明确提到当前 Agent，member 和 all 保原语义。
 未知账号不需要 Person，也不据此创建身份或授权。无提及字段的旧 Snapshot 表示未提供，
 不补查、不重写原已付请求；快照与独立存储的 serde 保原 ID 和原名称。
 
@@ -29,6 +29,15 @@ rubric `v6-zh-5`。请求使用中性 eN/tN、原文、作者、关系、引用�
 scope、generation、revision、请求序号等本地管理字段不发送。
 Snapshot 保留 Host 实际提供的材料，DTO 不另加实验字节或条目帽；实际 Provider 容量错误正常返回，
 字节不是 token，token 只记录真实 usage。
+
+`JevObserver(..., identity=...)` 要求 Host 提供同步身份回调，返回当前角色的
+`display_name` 与显式 `aliases`。编码每个新请求时读取一次，放入 `state.agent_identity`，
+只作为结合原生提及、引用与上下文识别对象的资料，不是扮演角色或修改评分规则的指令。
+本库不加载人格文件，不推断性别，不由名字创建身份或权限。
+`invite_yuki`、`extend_yuki`、`ask_yuki_stop`、`floor_state.yuki` 和 `yuki_participation`
+保留原协议含义；这里的 yuki 是标签，不是当前角色的名字。
+评分选项与控制语义未变，rubric 仍为 `v6-zh-5`，原已应用事实与 Controller 状态不重置。
+后续新观察使用调用时的身份参考；改名本身不排观察、不改 Snapshot，不改写已编码请求或已有结果。
 
 interaction、information、floor 是新资格的必需维度，缺失或非法保留诊断并计失败；
 合法 unknown 不计失败。明确邀请和楼层已确定时，信息新旧或旧讨论归属 unknown 不单独否决邀请。
@@ -56,8 +65,8 @@ interaction、information、floor 是新资格的必需维度，缺失或非法�
 thread 与原选项共用 tN；相对时间沿原报告来源时间，不把响应完成时间伪装成来源时间。
 没有合法报告则省略，不默认 stay；quiet 仍可查询与投影，不能因非活跃而过滤丢失。
 
-rubric 明确这是 Yuki 自身意愿，不是聊天成员发言、真人邀请、停止要求或授权。
-quiet 不阻止识别真人重新邀请，join/stay 不证明真人仍在和她交流。
+rubric 明确这是当前 Agent 自身意愿，不是聊天成员发言、真人邀请、停止要求或授权。
+quiet 不阻止识别真人重新邀请，join/stay 不证明真人仍在和当前 Agent 交流。
 Jev 解释真实输入，后端决定参与；意愿变化本身不新排观察、不补问“是否应该 quiet”。
 在途自报变化不改写 Snapshot、请求字节或 trace，不 veto 原结果；真实来源修订与撤回继续核验。
 Observer 必须返回与实际提交相同的 Snapshot。

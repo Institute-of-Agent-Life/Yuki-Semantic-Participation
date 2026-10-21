@@ -42,7 +42,9 @@ async def probe(fixture: dict[str, object]) -> dict[str, object]:
     if not key:
         raise ValueError("Jev key is not configured in this process")
     model = os.environ.get("SEMANTIC_PARTICIPATION_MODEL", "jev-1.13.0")
-    observer = JevObserver(key, model=model)
+    observer = JevObserver(
+        key, identity=lambda: {"display_name": "Yuki", "aliases": ()}, model=model
+    )
     results: list[dict[str, object]] = []
     try:
         for scene in fixture["scenes"]:

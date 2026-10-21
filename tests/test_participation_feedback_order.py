@@ -169,6 +169,7 @@ def test_learning_order_after_http_freeze_preserves_the_original_snapshot_and_ap
     original_snapshot = actual.snapshot.model_dump_json()
     observer = JevObserver.__new__(JevObserver)
     observer.model = "fixture"
+    observer._identity = lambda: {"display_name": "Yuki", "aliases": ()}
     encoded = observer._encode_request(actual.snapshot)
     assert not controller.observe_committed_event(source.model_copy(update={"source_order": 9}))
     assert controller.state.seen[source.ref.event_id].source_order == 9

@@ -8,6 +8,58 @@ from yuki_participation.rubric import CRITERIA
 from yuki_participation.scheduling import ObservationQueue, ProviderHealth
 
 
+@pytest.mark.asyncio
+async def test_current_role_is_request_reference_and_does_not_rewrite_inflight_material():
+    import json
+
+    current = {"display_name": "阿澪", "aliases": ("小澪",)}
+    bodies = []
+    identity_reads = []
+
+    def identity():
+        identity_reads.append(dict(current))
+        return current
+
+    def handle(request):
+        bodies.append(request.content)
+        payload = json.loads(request.content)
+        # A rename while HTTP is in progress cannot change the encoded request.
+        current.update(display_name="林舟", aliases=("阿舟",))
+        answers = {
+            name: {
+                "type": "choice",
+                "choice": "unknown",
+                "probabilities": {key: float(key == "unknown") for key in question["criteria"]},
+            }
+            for name, question in payload["questions"].items()
+        }
+        return httpx.Response(200, json={"model": "jev-1.13.0", "answers": answers})
+
+    snapshot = Snapshot(scope=SCOPE, focus=event(), context=(), issued_at=100, sequence=1)
+    original = snapshot.model_dump_json()
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handle)) as client:
+        observer = JevObserver("synthetic-key", identity=identity, client=client)
+        first = await observer.evaluate(snapshot)
+        old_body = bodies[0]
+        second = await observer.evaluate(snapshot.model_copy(update={"sequence": 2}))
+    before, after = (json.loads(body) for body in bodies)
+    assert before["state"]["agent_identity"] == {"display_name": "阿澪", "aliases": ["小澪"]}
+    assert after["state"]["agent_identity"] == {"display_name": "林舟", "aliases": ["阿舟"]}
+    assert identity_reads == [
+        {"display_name": "阿澪", "aliases": ("小澪",)},
+        {"display_name": "林舟", "aliases": ("阿舟",)},
+    ]
+    assert bodies[0] == old_body
+    assert before["questions"] == after["questions"]
+    instructions = json.dumps(before["questions"], ensure_ascii=False)
+    assert "Yuki" not in instructions and "她" not in instructions
+    assert "不是扮演角色的指令" in instructions
+    assert snapshot.model_dump_json() == original
+    assert first.snapshot == snapshot
+    assert second.snapshot.sequence == 2
+    assert first.answers.keys() == second.answers.keys()
+
+
 def test_round_robin_and_inflight_coalescing():
     queue = ObservationQueue(SCOPE)
     first = event()
@@ -111,7 +163,9 @@ async def test_native_payload_probabilities_and_partial_invalid_dimensions():
         )
 
     async with httpx.AsyncClient(transport=httpx.MockTransport(handle)) as client:
-        observer = JevObserver("synthetic-key", client=client)
+        observer = JevObserver(
+            "synthetic-key", identity=lambda: {"display_name": "Yuki", "aliases": ()}, client=client
+        )
         result = await observer.evaluate(
             Snapshot(
                 scope=SCOPE,
@@ -139,7 +193,9 @@ async def test_no_immediate_retry_on_rate_limit():
         return httpx.Response(429)
 
     async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
-        observer = JevObserver("synthetic-key", client=client)
+        observer = JevObserver(
+            "synthetic-key", identity=lambda: {"display_name": "Yuki", "aliases": ()}, client=client
+        )
         with pytest.raises(httpx.HTTPStatusError):
             await observer.evaluate(
                 Snapshot(scope=SCOPE, focus=event(), context=(), issued_at=100, sequence=1)
@@ -149,9 +205,13 @@ async def test_no_immediate_retry_on_rate_limit():
 
 def test_missing_key_or_floating_model_is_not_ready():
     with pytest.raises(ValueError):
-        JevObserver("")
+        JevObserver("", identity=lambda: {"display_name": "Yuki", "aliases": ()})
     with pytest.raises(ValueError):
-        JevObserver("synthetic-key", model="jev-latest")
+        JevObserver(
+            "synthetic-key",
+            identity=lambda: {"display_name": "Yuki", "aliases": ()},
+            model="jev-latest",
+        )
 
 
 @pytest.mark.asyncio
@@ -177,7 +237,9 @@ async def test_malformed_usage_is_protocol_error_not_unhandled_attribute_error()
         )
 
     async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
-        observer = JevObserver("synthetic-key", client=client)
+        observer = JevObserver(
+            "synthetic-key", identity=lambda: {"display_name": "Yuki", "aliases": ()}, client=client
+        )
         with pytest.raises(ValueError, match="semantic_usage_invalid"):
             await observer.evaluate(
                 Snapshot(scope=SCOPE, focus=event(), context=(), issued_at=100, sequence=1)
@@ -219,7 +281,9 @@ async def test_full_request_preserves_focus_context_and_reply_anchor():
         scope=SCOPE, focus=focus, context=(anchor, *extras), issued_at=100, sequence=1
     )
     async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
-        observer = JevObserver("synthetic-key", client=client)
+        observer = JevObserver(
+            "synthetic-key", identity=lambda: {"display_name": "Yuki", "aliases": ()}, client=client
+        )
         result = await observer.evaluate(snapshot)
     assert result.snapshot.focus == focus
     assert anchor in result.snapshot.context
@@ -247,7 +311,9 @@ async def test_large_focus_or_anchor_reaches_the_real_provider_capacity(large_an
     context = (source,) if large_anchor else ()
     snapshot = Snapshot(scope=SCOPE, focus=focus, context=context, issued_at=101, sequence=1)
     async with httpx.AsyncClient(transport=httpx.MockTransport(reject)) as client:
-        observer = JevObserver("synthetic-key", client=client)
+        observer = JevObserver(
+            "synthetic-key", identity=lambda: {"display_name": "Yuki", "aliases": ()}, client=client
+        )
         with pytest.raises(httpx.HTTPStatusError) as raised:
             await observer.evaluate(snapshot)
     assert raised.value.response.status_code == 413
