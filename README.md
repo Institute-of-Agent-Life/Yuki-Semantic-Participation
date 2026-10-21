@@ -24,6 +24,11 @@ Yuki 的群聊语义观察与自主参与控制器。它接收 Host 已入账、
 当前投影为 `semantic-state-v3`，rubric 为 `v6-zh-5`，默认 Jev 模型为 `jev-1.13.0`。
 缺状态保持未知，无消费者的 mood 已退出新自报。
 
+`JevObserver` 的 `identity` 回调在编码每个新请求时提供当前角色的 `display_name` 与
+显式 `aliases`，仅用于辨认交流对象，不加载 SOUL 或扮演角色。改名不重置 Controller，
+不新增观察；已经编码的请求和已有结果保持原件。`invite_yuki`、`yuki_participation` 等
+仍是固定协议键，不表示角色必须叫 Yuki，也不声明其性别。
+
 参与查询不再重算未使用的 `UnitParticipation.belief`。自主评分与历史折叠在一次调用内
 聚合原动作，复用已解析的当前检查点，避免随单元数反复解码整个状态；
 真实概率公式、quiet、来源撤回和原运行回执保持原语义，没有增加缓存或接话门槛。

@@ -315,7 +315,11 @@ async def test_observer_dynamic_unit_choice_maps_to_host_object_without_creating
         return httpx.Response(200, json={"model": "jev-1.13.0", "answers": answers})
 
     async with httpx.AsyncClient(transport=httpx.MockTransport(transport)) as client:
-        observer = JevObserver("synthetic-not-a-credential", client=client)
+        observer = JevObserver(
+            "synthetic-not-a-credential",
+            identity=lambda: {"display_name": "Yuki", "aliases": ()},
+            client=client,
+        )
         result = await observer.evaluate(snapshot)
     assert result.resolved_unit == option
     assert result.snapshot == snapshot

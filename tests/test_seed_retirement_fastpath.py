@@ -227,7 +227,9 @@ def test_real_encoder_projects_frozen_related_intent_and_existing_thread_map(eng
     assert c.observe_unit_hint(original, report(engage, at=101, response="intent"))
     source, _ = input_for(c, original, "focus", 2, admit=False)
     snapshot = freeze(c, source)
-    encoded = JevObserver("synthetic-not-a-credential")._encode_request(snapshot)
+    encoded = JevObserver(
+        "synthetic-not-a-credential", identity=lambda: {"display_name": "Yuki", "aliases": ()}
+    )._encode_request(snapshot)
     payload = json.loads(encoded)
     state = payload["state"]
     local = state["yuki_participation"]["units"][0]
@@ -247,7 +249,12 @@ def test_real_encoder_projects_frozen_related_intent_and_existing_thread_map(eng
         original,
         report("quiet" if engage != "quiet" else "join", at=103, response="new-state", sequence=2),
     )
-    assert JevObserver("synthetic-not-a-credential")._encode_request(snapshot) == original_bytes
+    assert (
+        JevObserver(
+            "synthetic-not-a-credential", identity=lambda: {"display_name": "Yuki", "aliases": ()}
+        )._encode_request(snapshot)
+        == original_bytes
+    )
     assert snapshot.projection_revision == "semantic-state-v3"
     assert snapshot.participation.units[0].engage == engage
 
@@ -511,7 +518,9 @@ def test_scope_self_report_and_local_quiet_both_reach_one_frozen_request():
     snapshot = freeze(c, focus)
     assert snapshot.participation.scope_intent.engage == "join"
     assert snapshot.participation.units[0].engage == "quiet"
-    payload = JevObserver("synthetic-not-a-credential")._semantic_state(snapshot)
+    payload = JevObserver(
+        "synthetic-not-a-credential", identity=lambda: {"display_name": "Yuki", "aliases": ()}
+    )._semantic_state(snapshot)
     assert payload["yuki_participation"]["scope_intent"]["engage"] == "join"
     assert payload["yuki_participation"]["units"][0]["engage"] == "quiet"
     assert c.state.engagement_report == own

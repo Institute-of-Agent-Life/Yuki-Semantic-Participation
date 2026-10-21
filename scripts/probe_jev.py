@@ -99,12 +99,10 @@ async def probe(cases: list[dict], observer: JevObserver) -> dict:
         start = time.perf_counter()
         row = {"case_id": case["id"], "expected": case["expected"], "attempt_count": 1}
         try:
-            snapshot = observer.prepare_snapshot(
-                make_snapshot(case, sequence=sequence, now=time.time())
-            )
-            row["request_bytes"] = len(observer._encode_request(snapshot))
+            snapshot = make_snapshot(case, sequence=sequence, now=time.time())
             row["http_attempt_count"] = 1
             result = await observer.evaluate(snapshot)
+            row["request_bytes"] = result.request_bytes
             comparisons = {}
             for dimension, expected in case["expected"].items():
                 answer = result.answers.get(dimension)
@@ -178,7 +176,7 @@ async def probe(cases: list[dict], observer: JevObserver) -> dict:
 
 async def run(args: argparse.Namespace, key: str) -> int:
     cases = load_cases(args.fixtures)
-    observer = JevObserver(key)
+    observer = JevObserver(key, identity=lambda: {"display_name": "Yuki", "aliases": ()})
     try:
         report = await probe(cases[: args.limit], observer)
     finally:

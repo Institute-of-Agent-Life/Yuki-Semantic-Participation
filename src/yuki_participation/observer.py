@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import time
+from collections.abc import Callable, Mapping
 from typing import Protocol
 from uuid import uuid4
 
@@ -28,12 +29,14 @@ class JevObserver:
         self,
         api_key: str,
         *,
+        identity: Callable[[], Mapping[str, object]],
         model: str = "jev-1.13.0",
         client: httpx.AsyncClient | None = None,
     ) -> None:
         if not api_key.strip() or model in {"jev-latest", "latest"}:
             raise ValueError("semantic_provider_requires_key_and_pinned_model")
         self._key = api_key
+        self._identity = identity
         self.model = model
         self._owned = client is None
         self._client = client or httpx.AsyncClient(timeout=12)
@@ -41,10 +44,12 @@ class JevObserver:
     def _encode_request(
         self, snapshot: Snapshot, *, actor_identity: ActorIdentity = original_actor
     ) -> bytes:
+        state = self._semantic_state(snapshot, actor_identity=actor_identity)
+        state["agent_identity"] = dict(self._identity())
         return json.dumps(
             {
                 "model": self.model,
-                "state": self._semantic_state(snapshot, actor_identity=actor_identity),
+                "state": state,
                 "questions": questions(
                     unit_options=snapshot.focus.unit_options
                     if snapshot.focus.unit_ambiguous

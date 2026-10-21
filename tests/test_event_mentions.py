@@ -61,7 +61,9 @@ async def test_native_mentions_reach_real_http_payload_without_becoming_particip
         return httpx.Response(200, json={"model": "jev-1.13.0", "answers": answers})
 
     async with httpx.AsyncClient(transport=httpx.MockTransport(respond)) as client:
-        result = await JevObserver("synthetic-key", client=client).evaluate(original)
+        result = await JevObserver(
+            "synthetic-key", identity=lambda: {"display_name": "Yuki", "aliases": ()}, client=client
+        ).evaluate(original)
     sent = requests[0]["state"]["focus"]
     assert sent["text"] == focus.text and sent["target"] == focus.target
     assert [focus.text[item.text_start : item.text_end] for item in mentions()] == [
