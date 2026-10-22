@@ -9,7 +9,6 @@ import pytest
 
 from tests.test_controller import SCOPE, event, observation
 from tests.test_participation_continuation import admitted, binding, report, save_historical_wire
-from yuki_participation.autonomy_parameters import AutonomyParameters
 from yuki_participation.controller import Controller, SeenSource
 from yuki_participation.models import Choice, Effect, HostUnitOption, SourceRef
 from yuki_participation.participation import CHECKPOINT_KEY
@@ -24,7 +23,6 @@ def tick(controller, now):
 @pytest.mark.parametrize("flow", ["continuous", "paused"])
 def test_real_unit_survives_raw_retirement_and_store_reopen(tmp_path, intent, flow):
     c, origin, established = admitted()
-    c.set_parameters(AutonomyParameters(continuation_review_span=16))
     effect = Effect(effect_id="accepted", kind="message", at=101, actual_targets=("group",))
     assert c.observe_unit_expression(established, "original-run", effect)
     if intent:

@@ -81,7 +81,7 @@ def test_late_negative_review_still_retires_later_unconfirmed_inputs():
     assert _matched(controller) is None
 
 
-def test_confirmation_covers_original_progress_without_clearing_a_later_input():
+def test_confirmation_preserves_original_source_and_later_admissions():
     controller, origin, _, second, _, new = _pair()
     third = event("event:11", at=102, source_order=11)
     assert controller.observe_committed_event(third)
@@ -91,7 +91,9 @@ def test_confirmation_covers_original_progress_without_clearing_a_later_input():
         continuation=True,
     )
     assert controller.apply_semantic_observation(new)
-    assert controller.participating_units(102)[0].unconfirmed_inputs == 1
+    unit = controller._participation_checkpoint().units[controller._unit_key("topic", "A")]
+    assert unit.review.source == new.snapshot.focus.ref
+    assert third.ref in unit.continuation_refs
 
 
 def test_quiet_is_not_reopened_by_a_late_positive_review_or_actual_send():
@@ -122,8 +124,6 @@ def test_cold_old_state_learns_source_order_without_reopening_quiet():
     for unit in raw["host_checkpoint"][CHECKPOINT_KEY]["units"].values():
         if unit["hint"] is not None:
             unit["hint"].pop("source", None)
-        for source in unit.get("fast_inputs") or ():
-            source.pop("source_order", None)
     restored = Controller.restore(State.model_validate(raw), 102)
     original_events = {
         key: source.model_dump_json() for key, source in restored.state.events.items()

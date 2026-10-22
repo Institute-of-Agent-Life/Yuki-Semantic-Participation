@@ -90,47 +90,47 @@ def scored(snapshot, *, act="extend_yuki", floor="yuki", selection="old"):
     )
 
 
-def established(span=4):
+def established():
     c, first, original = admitted()
-    c.set_parameters(AutonomyParameters(continuation_review_span=span))
     assert c.observe_unit_hint(original, report("stay", at=100, run="initial"))
     return c, first, original
 
 
-def test_span_counts_real_sources_once_across_hydration_and_cold_restore():
-    c, first, original = established(2)
+def test_continuation_has_no_review_quota_across_hydration_and_cold_restore():
+    c, first, original = established()
     b, bb = input_for(c, original, "b", 1)
     d, bd = input_for(c, original, "d", 2)
     for _ in range(3):
         for source, actual in ((first, original), (b, bb), (d, bd)):
             assert c.observe_unit_input(actual, source.ref, continuation=source != first)
-    unit = c.participating_units(103)[0]
-    assert unit.unconfirmed_inputs == 2
+    assert c._participation_checkpoint().units[c._unit_key("topic", "A")].continuation_refs == (
+        b.ref,
+        d.ref,
+    )
     assert (
         c.state.host_checkpoint[CHECKPOINT_KEY]["units"][c._unit_key("topic", "A")]["input_ref"]
         == d.ref.model_dump()
     )
     next_source, next_binding = input_for(c, original, "next", 3, admit=False)
     assert c.participation_view(next_source, 103).needs_observation
-    assert not c.continuation_current(next_source.ref, next_binding, 103)
-    assert c.continuation_current(next_source.ref, next_binding, 103, check_budget=False)
+    assert c.continuation_current(next_source.ref, next_binding, 103)
     restored = Controller.restore(
         State.model_validate_json(c.state.model_dump_json()), 103, parameters=c.parameters
     )
-    assert restored.participating_units(103)[0].unconfirmed_inputs == 2
-    assert not restored.continuation_current(next_source.ref, next_binding, 103)
+    assert restored.continuation_current(next_source.ref, next_binding, 103)
     assert not c.state.boundaries
 
 
-def test_positive_focus_confirms_only_original_covered_progress_not_later_context():
-    c, _, original = established(3)
+def test_positive_focus_keeps_original_review_source_and_later_admissions():
+    c, _, original = established()
     b, _ = input_for(c, original, "b", 1)
     snap = freeze(c, b)
     later, _ = input_for(c, original, "later", 2)
     assert c.apply_semantic_observation(scored(snap))
-    assert c.participating_units(103)[0].unconfirmed_inputs == 1
     assert c.participating_units(103)[0].semantic_continuation
-    assert len(c._participation_checkpoint().units[c._unit_key("topic", "A")].fast_inputs) == 2
+    unit = c._participation_checkpoint().units[c._unit_key("topic", "A")]
+    assert unit.review.source == b.ref
+    assert unit.continuation_refs == (b.ref, later.ref)
     assert later.ref != snap.focus.ref
 
 
@@ -154,7 +154,7 @@ def test_late_negative_review_reaches_original_unit_after_new_unreviewed_input(
     actual = Effect(effect_id="late-actual-send", kind="message", at=103)
     assert c.observe_unit_expression(bb, "original", actual)
     fresh, current = input_for(c, original, "fresh", 4, admit=False)
-    assert not c.continuation_current(fresh.ref, current, 104, check_budget=False)
+    assert not c.continuation_current(fresh.ref, current, 104)
     assert c.state.effects[actual.effect_id].effect == actual
     assert c.participating_units(104)[0].engage == "stay"
     assert bool(c.state.boundaries) == (act == "ask_yuki_stop")
@@ -174,21 +174,18 @@ def test_local_quiet_and_negative_review_are_independent_facts(quiet_first):
     assert unit.engage == "quiet" and not unit.semantic_continuation
     assert not c.state.boundaries
     c = Controller.restore(State.model_validate_json(c.state.model_dump_json()), 103)
-    unit = c.participating_units(103)[0]
     assert unit.engage == "quiet" and not unit.semantic_continuation
 
 
-def test_unknown_is_not_negative_and_cannot_replenish_spent_review_span():
-    c, _, original = established(1)
+def test_unknown_keeps_existing_relationship_without_buying_confirmation():
+    c, _, original = established()
     source, _ = input_for(c, original, "b", 1)
     assert c.apply_semantic_observation(
         scored(freeze(c, source), act="unknown", floor="unknown", selection="unknown")
     )
     assert c.participating_units(102)[0].semantic_continuation
-    assert c.participating_units(102)[0].unconfirmed_inputs == 1
     fresh, actual = input_for(c, original, "fresh", 2, admit=False)
-    assert not c.continuation_current(fresh.ref, actual, 102)
-    assert c.continuation_current(fresh.ref, actual, 102, check_budget=False)
+    assert c.continuation_current(fresh.ref, actual, 102)
     assert not c.state.boundaries
 
 
@@ -206,7 +203,7 @@ def test_new_real_invitation_can_establish_its_source_without_late_old_review_re
     assert c.continuation_current(fresh.ref, actual, 103)
 
 
-def test_old_namespace_missing_progress_is_unknown_not_a_fresh_full_allowance():
+def test_old_namespace_missing_progress_keeps_real_relationship_without_quota():
     c, _, original = established()
     raw = c.state.model_dump(mode="json")
     for unit in raw["host_checkpoint"][CHECKPOINT_KEY]["units"].values():
@@ -214,10 +211,8 @@ def test_old_namespace_missing_progress_is_unknown_not_a_fresh_full_allowance():
             unit.pop(name, None)
     c = Controller.restore(State.model_validate(raw), 101)
     source, actual = input_for(c, original, "b", 2, admit=False)
-    assert c.participating_units(102)[0].unconfirmed_inputs is None
-    assert not c.continuation_current(source.ref, actual, 102)
+    assert c.continuation_current(source.ref, actual, 102)
     assert c.apply_semantic_observation(scored(freeze(c, source)))
-    assert c.participating_units(103)[0].unconfirmed_inputs == 0
     assert c.continuation_current(source.ref, actual, 103)
 
 
@@ -301,7 +296,7 @@ async def test_inflight_request_freezes_once_new_reports_do_not_requeue_and_real
 
     session = ObservationSession(c, Delayed())
     assert session.request_observation(source.ref)
-    task = asyncio.create_task(session.evaluate_due(103, active=True))
+    task = asyncio.create_task(session.evaluate_due(104))
     await started.wait()
     submitted = snapshots[0].model_dump_json()
     assert c.observe_unit_hint(original, report("quiet", at=102, response="while-http"))
@@ -415,7 +410,7 @@ def test_old_queued_seed_is_dropped_new_human_restores_with_current_frozen_repor
     restored = type(session.queue)(SCOPE)
     restored.restore(checkpoint, now=103, events=c.state.events)
     assert len(restored.pending) == 1 and restored.sequence == 4
-    snapshot = restored.take(104, active=False, context=tuple(c.state.events.values()))
+    snapshot = restored.take(104, context=tuple(c.state.events.values()))
     snapshot = c.freeze_observation(snapshot)
     assert snapshot.focus == source and snapshot.sequence == 5
     assert snapshot.participation.units[0].engage == "stay"
@@ -432,7 +427,8 @@ def test_retired_parameters_are_narrowly_migrated_and_mood_does_not_become_empty
             "continuation_review_span": 2,
         }
     )
-    assert profile.source_interval_seconds == 17 and profile.continuation_review_span == 2
+    assert profile.source_interval_seconds == 17
+    assert "continuation_review_span" not in profile.model_dump()
     assert "recall_source_decay_seconds" not in profile.model_dump()
     with pytest.raises(ValidationError):
         AutonomyParameters.model_validate({"typo_unknown": 1})
@@ -459,12 +455,12 @@ def test_retired_parameters_are_narrowly_migrated_and_mood_does_not_become_empty
     )
     assert snapshot.projection_revision is None and snapshot.participation is None
     assert "seed_fit" not in questions()
-    assert REVISION == "v6-zh-5"
+    assert REVISION == "v6-zh-6"
 
 
 @pytest.mark.asyncio
-async def test_real_session_timeout_and_cold_backoff_do_not_confirm_spent_fast_span():
-    c, _, original = established(1)
+async def test_real_session_timeout_and_cold_backoff_do_not_remove_real_continuation():
+    c, _, original = established()
     source, _ = input_for(c, original, "source", 1)
 
     class Unavailable:
@@ -473,19 +469,19 @@ async def test_real_session_timeout_and_cold_backoff_do_not_confirm_spent_fast_s
 
     session = ObservationSession(c, Unavailable())
     session.request_observation(source.ref)
-    assert not await session.evaluate_due(104, active=True)
+    assert not await session.evaluate_due(104)
     assert session.health.failures == 1 and session.retry_after == 134
     fresh, actual = input_for(c, original, "later", 5, admit=False)
-    assert not c.continuation_current(fresh.ref, actual, 105)
-    assert c.participating_units(105)[0].unconfirmed_inputs == 1
+    assert c.continuation_current(fresh.ref, actual, 105)
+    assert c._participation_checkpoint().units[c._unit_key("topic", "A")].review is None
     restored = Controller.restore(
         State.model_validate_json(c.state.model_dump_json()), 105, parameters=c.parameters
     )
     recovered = ObservationSession(restored, Unavailable())
     assert recovered.retry_after == 134
-    assert not await recovered.evaluate_due(106, active=True)
+    assert not await recovered.evaluate_due(106)
     assert recovered.health.failures == 1
-    assert not restored.continuation_current(fresh.ref, actual, 106)
+    assert restored.continuation_current(fresh.ref, actual, 106)
     assert not restored.state.boundaries
 
 

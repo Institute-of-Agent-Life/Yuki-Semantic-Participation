@@ -126,7 +126,7 @@ def test_accepted_conversation_updates_bounded_familiarity_across_restart():
     )
 
 
-def test_explicit_stop_reopens_only_for_same_actor_with_strong_scoped_invitation():
+def test_explicit_stop_is_not_an_authorship_gate_on_later_real_invitation():
     c = controller()
     stop = source("stop")
     c.observe_committed_event(stop)
@@ -134,7 +134,7 @@ def test_explicit_stop_reopens_only_for_same_actor_with_strong_scoped_invitation
     other = source("other-invites", at=110, author="B")
     c.observe_committed_event(other)
     c.apply_semantic_observation(observation(other))
-    assert c._closed(other)
+    assert not c._closed(other)
     own = source("owner-invites", at=111)
     c.observe_committed_event(own)
     c.apply_semantic_observation(observation(own))
@@ -143,6 +143,8 @@ def test_explicit_stop_reopens_only_for_same_actor_with_strong_scoped_invitation
     c.apply_semantic_observation(observation(stop, sequence=2, act="ask_yuki_stop"))
     assert not c._closed(own)
     c.observe_source_change(own.ref)
+    assert not c._closed(other)
+    c.observe_source_change(other.ref)
     assert c._closed(other)
 
 

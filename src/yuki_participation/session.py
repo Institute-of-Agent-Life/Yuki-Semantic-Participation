@@ -15,11 +15,18 @@ from pydantic import TypeAdapter
 from .controller import ActorIdentity, Controller, original_actor
 from .models import CandidateKind, ScopedEvent, Snapshot, SourceRef
 from .observer import SemanticObserver
+from .participation import ParticipationUnit
 from .scheduling import ObservationQueue, ProviderHealth
 
 
 class ObservationSession:
-    def __init__(self, controller: Controller, observer: SemanticObserver) -> None:
+    def __init__(
+        self,
+        controller: Controller,
+        observer: SemanticObserver,
+        *,
+        actor_identity: ActorIdentity = original_actor,
+    ) -> None:
         self.controller = controller
         self.observer = observer
         self.queue = ObservationQueue(controller.state.scope)
@@ -42,7 +49,12 @@ class ObservationSession:
                 or (failure is not None and not isinstance(failure, dict))
             ):
                 raise ValueError("invalid_observer_checkpoint")
-            self.queue.restore(queue, now=controller.state.now, events=controller.state.events)
+            self.queue.restore(
+                queue,
+                now=controller.state.now,
+                events=controller.state.events,
+                unit_for=lambda event: self._review_unit(event, actor_identity),
+            )
             self.health = TypeAdapter(ProviderHealth).validate_python(checkpoint.get("health"))
             self.retry_after = float(retry_after)
             self.last_error = last_error
@@ -74,7 +86,11 @@ class ObservationSession:
         self.controller.observe_committed_event(event)
 
     def request_observation(
-        self, ref: SourceRef, kind: CandidateKind = CandidateKind.CONVERSATION
+        self,
+        ref: SourceRef,
+        kind: CandidateKind = CandidateKind.CONVERSATION,
+        *,
+        actor_identity: ActorIdentity = original_actor,
     ) -> bool:
         event = self.controller.state.events.get(ref.event_id)
         if event is None or event.ref != ref or not self.controller._valid(ref):
@@ -88,21 +104,83 @@ class ObservationSession:
             and self.last_failure.get("source") == source
         ):
             return False
-        self.queue.offer(event, kind)
+        self.queue.offer(event, kind, unit=self._review_unit(event, actor_identity))
         self.checkpoint()
         return True
 
+    def _review_unit(
+        self, event: ScopedEvent, actor_identity: ActorIdentity
+    ) -> ParticipationUnit | None:
+        if event.observation_priority:
+            return None
+        matched = self.controller.participation_view(
+            event, max(self.controller.state.now, event.at), actor_identity=actor_identity
+        ).matched_unit
+        return (
+            ParticipationUnit(
+                thread=matched.unit.thread, target=actor_identity(matched.unit.target)
+            )
+            if matched is not None
+            else None
+        )
+
+    def _discard_quiet_reviews(self, now: float, actor_identity: ActorIdentity) -> None:
+        checkpoint = self.controller._participation_checkpoint()
+        quiet = {
+            (unit.unit.thread, actor_identity(unit.unit.target))
+            for unit in self.controller._current_units(now, checkpoint, actor_identity)
+            if unit.engage == "quiet"
+        }
+        if not quiet:
+            return
+        admitted: dict[SourceRef, set[tuple[str, str]]] = {}
+        hints: dict[tuple[str, str], list[tuple[float, SourceRef | None]]] = {}
+        observed: dict[tuple[str, str], set[SourceRef]] = {}
+        for unit in checkpoint.units.values():
+            identity = (unit.binding.unit.thread, actor_identity(unit.binding.unit.target))
+            if identity not in quiet or not self.controller._binding_valid(
+                unit.binding, checkpoint
+            ):
+                continue
+            for ref in unit.continuation_refs:
+                admitted.setdefault(ref, set()).add(identity)
+            hint = unit.hint
+            if (
+                hint is not None
+                and hint.delta.engage == "quiet"
+                and all(self.controller._unit_ref_valid(ref, unit) for ref in unit.hint_basis)
+            ):
+                hints.setdefault(identity, []).append(
+                    (hint.at, self.controller._hint_source(hint, unit.hint_basis))
+                )
+                observed.setdefault(identity, set()).update(unit.hint_basis)
+        for key, pending in list(self.queue.pending.items()):
+            if pending.event.observation_priority:
+                continue
+            # Only actual admitted continuation can be redundant. Merely included
+            # context, in-flight requests and newer invitations are not cleared.
+            identities = admitted.get(pending.event.ref, set())
+            if len(identities) != 1:
+                continue
+            identity = next(iter(identities))
+            if pending.event.ref in observed.get(identity, ()) or any(
+                source == pending.event.ref
+                or self.controller._source_before(pending.event.at, pending.event.ref, at, source)
+                for at, source in hints.get(identity, ())
+            ):
+                self.queue.discard(key)
+
     async def evaluate_due(
-        self, now: float, *, active: bool, actor_identity: ActorIdentity = original_actor
+        self, now: float, *, actor_identity: ActorIdentity = original_actor
     ) -> bool:
         """At most one real request. Inputs may arrive while HTTP is in progress."""
         self.queue.discard_unavailable(now, self.controller.state.events)
+        self._discard_quiet_reviews(now, actor_identity)
         self.checkpoint()
         if now < self.retry_after:
             return False
         snapshot = self.queue.take(
             now,
-            active=active,
             context=tuple(self.controller.state.events.values()),
         )
         if snapshot is None:
@@ -151,7 +229,7 @@ class ObservationSession:
             self._failed(snapshot, now, category, status=status)
             return False
         except asyncio.CancelledError:
-            self.queue.offer(snapshot.focus, snapshot.kind)
+            self.queue.retry()
             raise
         finally:
             self.queue.finish(snapshot.sequence)
@@ -180,4 +258,4 @@ class ObservationSession:
         else:
             delay = min(180, 30 * 2 ** min(self.health.failures - 1, 3))
         self.retry_after = now + delay
-        self.queue.offer(snapshot.focus, snapshot.kind)
+        self.queue.retry()

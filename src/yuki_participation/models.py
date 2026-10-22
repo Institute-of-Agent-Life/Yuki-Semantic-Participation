@@ -117,14 +117,20 @@ class ParticipationContext(Record):
 
 
 class UnitReviewSnapshot(Record):
-    """Local original relationship/progress; not a Jev question or authority."""
+    """Local original relationship; not a Jev question or authority."""
 
     thread: str
     target: str
     actor: str
     basis: tuple[SourceRef, ...]
-    fast_sequence: int = Field(ge=0)
     borrowed: bool = False
+
+    @model_validator(mode="before")
+    @classmethod
+    def retire_review_progress(cls, value: object) -> object:
+        if isinstance(value, dict):
+            return {key: item for key, item in value.items() if key != "fast_sequence"}
+        return value
 
 
 class Snapshot(Record):

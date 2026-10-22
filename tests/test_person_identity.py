@@ -106,35 +106,25 @@ def populated():
     return c, a, ua, b, ub
 
 
-def test_merge_counts_original_sources_once_and_preserves_unknown_progress():
+def test_merge_keeps_original_admissions_without_an_implicit_review_quota():
     c, a, ua, _b, _ub = populated()
     focus = source(c, 20, "C", 120)
-    assert c.participating_units(120, actor_identity=root)[0].unconfirmed_inputs == 5
-    assert c.participation_view(focus, 120, actor_identity=root).matched_unit is None
+    assert c.participation_view(focus, 120, actor_identity=root).matched_unit is not None
     original = c.state.model_dump_json()
     for number in range(2, 5):
         assert c.observe_unit_input(ua, c.state.events[f"event:{number}"].ref, continuation=True)
     assert c.observe_unit_input(ua, a.ref)
     assert c.state.model_dump_json() == original
-    checkpoint = c._read_participation_checkpoint()
-    key = c._unit_key("topic", "A")
-    checkpoint.units[key] = checkpoint.units[key].model_copy(update={"fast_inputs": None})
-    c._save_participation(checkpoint)
-    assert c.participating_units(120, actor_identity=root)[0].unconfirmed_inputs is None
-    assert c.participation_view(focus, 120, actor_identity=root).matched_unit is None
 
 
-def test_paid_review_keeps_each_original_watermark_and_not_later_inputs():
+def test_paid_review_keeps_each_original_actor_and_source_without_rewriting_later_inputs():
     c, _a, ua, _b, ub = populated()
     focus = source(c, 20, "C", 120)
     snapshot = c.freeze_observation(
         Snapshot(scope=SCOPE, focus=focus, context=(), sequence=1, issued_at=120),
         actor_identity=root,
     )
-    assert {(item.actor, item.fast_sequence) for item in snapshot.unit_reviews} == {
-        ("A", 3),
-        ("B", 2),
-    }
+    assert {item.actor for item in snapshot.unit_reviews} == {"A", "B"}
     before = snapshot.model_dump_json()
     for number, actor, unit in ((21, "A", ua), (22, "B", ub)):
         event = source(c, number, actor, 121)
@@ -144,8 +134,8 @@ def test_paid_review_keeps_each_original_watermark_and_not_later_inputs():
     )
     assert c.apply_semantic_observation(actual, actor_identity=root)
     assert snapshot.model_dump_json() == before
-    assert c.participating_units(122, actor_identity=root)[0].unconfirmed_inputs == 2
-    assert {unit.review.covered_fast_sequence for unit in units(c).values()} == {2, 3}
+    assert {unit.review.source for unit in units(c).values()} == {focus.ref}
+    assert c.participation_view(c.state.events["event:22"], 122, actor_identity=root).matched_unit
     assert {unit.binding.actor for unit in units(c).values()} == {"A", "B"}
     assert not c.apply_semantic_observation(actual, actor_identity=root)
 
@@ -162,10 +152,7 @@ def test_merge_negative_review_closes_same_discussion_without_reobserving_old_fo
     )
     assert c.apply_semantic_observation(actual, actor_identity=root)
     newer = source(c, 21, "C", 121)
-    assert (
-        c.participation_view(newer, 121, actor_identity=root, check_budget=False).matched_unit
-        is None
-    )
+    assert c.participation_view(newer, 121, actor_identity=root).matched_unit is None
     assert set(c.state.observations) == {focus.ref.event_id}
     assert units(c)[c._unit_key("topic", "A")].binding == ua
     assert units(c)[c._unit_key("topic", "B")].binding == ub
@@ -180,7 +167,7 @@ def test_flattened_a_b_c_identity_cold_restore_keeps_checkpoint_and_admissions()
     assert restored.state.consumed == c.state.consumed
     before = restored.state.model_dump_json()
     current = restored.participating_units(120, actor_identity=root)
-    assert len(current) == 1 and current[0].unconfirmed_inputs == 5
+    assert len(current) == 1 and current[0].engage == "stay"
     assert restored.state.model_dump_json() == before
     separate = Controller(SCOPE.model_copy(update={"generation": 2}), 120)
     assert not separate.participating_units(120, actor_identity=root)
@@ -199,3 +186,53 @@ def test_new_jev_projection_uses_current_person_without_rewriting_snapshot():
     assert {unit["target"] for unit in state["yuki_participation"]["units"]} == {"C"}
     assert snapshot.model_dump_json() == original
     assert snapshot.focus.author == "B" and snapshot.context[0].author == "A"
+
+
+def test_merged_person_invitation_releases_original_target_stop_and_restores_fast_continuation():
+    c = Controller(SCOPE, 100)
+    original, _ = start(c, 1, "A", 100)
+    stop = source(c, 2, "A", 101)
+    assert c.apply_semantic_observation(observation(stop, act="ask_yuki_stop"), actor_identity=root)
+    invite = source(c, 3, "B", 102)
+    assert c.apply_semantic_observation(observation(invite), actor_identity=root)
+    assert c.participation_view(invite, 102, actor_identity=root).addressed
+    unit = binding(invite)
+    assert c.observe_unit_input(unit, invite.ref)
+    assert hint(c, unit, invite, "stay")
+    later = source(c, 4, "B", 103)
+    matched = c.participation_view(later, 103, actor_identity=root).matched_unit
+    assert matched is not None and not matched.closed
+    boundary = c.state.boundaries[stop.ref.event_id]
+    assert boundary.target == "A" and boundary.released_by == invite.ref
+    assert boundary.source == stop.ref
+    assert c.state.events[original.ref.event_id].author == "A"
+    assert c.state.events[invite.ref.event_id].author == "B"
+
+
+def test_merged_person_stop_closes_current_unit_even_without_original_actor_unit():
+    c = Controller(SCOPE, 100)
+    start(c, 1, "B", 100)
+    stop = source(c, 2, "A", 101)
+    assert c.apply_semantic_observation(observation(stop, act="ask_yuki_stop"), actor_identity=root)
+    later = source(c, 3, "B", 102)
+    assert c.participating_units(102, actor_identity=root)[0].closed
+    assert c.participation_view(later, 102, actor_identity=root).matched_unit is None
+    # A different person's current identity is not affected by this local boundary.
+    start(c, 4, "D", 103)
+    unrelated = source(c, 5, "D", 104)
+    assert c.participation_view(unrelated, 104, actor_identity=root).matched_unit is not None
+
+
+def test_withdrawn_merged_person_invitation_preserves_another_original_valid_reopening():
+    c = Controller(SCOPE, 100)
+    start(c, 1, "A", 100)
+    stop = source(c, 2, "A", 101)
+    assert c.apply_semantic_observation(observation(stop, act="ask_yuki_stop"), actor_identity=root)
+    first = source(c, 3, "B", 102)
+    second = source(c, 4, "C", 103)
+    for invitation in (first, second):
+        assert c.apply_semantic_observation(observation(invitation), actor_identity=root)
+    assert c.state.boundaries[stop.ref.event_id].released_by == second.ref
+    c.observe_source_change(second.ref, actor_identity=root)
+    assert c.state.boundaries[stop.ref.event_id].released_by == first.ref
+    assert not c.participating_units(104, actor_identity=root)[0].closed

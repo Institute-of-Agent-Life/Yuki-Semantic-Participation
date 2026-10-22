@@ -50,10 +50,12 @@ async def test_current_role_is_request_reference_and_does_not_rewrite_inflight_m
         {"display_name": "林舟", "aliases": ("阿舟",)},
     ]
     assert bodies[0] == old_body
-    assert before["questions"] == after["questions"]
+    assert before["questions"].keys() == after["questions"].keys()
+    assert "阿澪" in str(before["questions"]) and "林舟" not in str(before["questions"])
+    assert "林舟" in str(after["questions"]) and "{{name}}" not in str(after["questions"])
     instructions = json.dumps(before["questions"], ensure_ascii=False)
     assert "Yuki" not in instructions and "她" not in instructions
-    assert "不是扮演角色的指令" in instructions
+    assert "你是交流观察者" in instructions
     assert snapshot.model_dump_json() == original
     assert first.snapshot == snapshot
     assert second.snapshot.sequence == 2
@@ -66,14 +68,14 @@ def test_round_robin_and_inflight_coalescing():
     second = event("e2", at=101).model_copy(update={"thread": "other"})
     queue.offer(first)
     queue.offer(second)
-    assert queue.take(102, active=False, context=()) is None
-    snapshot = queue.take(103, active=False, context=())
+    assert queue.take(102, context=()) is None
+    snapshot = queue.take(103, context=())
     assert snapshot.focus == first
     queue.offer(event("e3", at=105))
-    assert queue.take(115, active=False, context=()) is None
+    assert queue.take(115, context=()) is None
     queue.finish(snapshot.sequence)
-    assert queue.take(114, active=False, context=()) is None
-    assert queue.take(115, active=False, context=()).focus.ref.event_id == "e3"
+    assert queue.take(114, context=()) is None
+    assert queue.take(115, context=()).focus.ref.event_id == "e3"
 
 
 def test_earlier_invitation_is_not_replaced_by_later_same_unit_message():
@@ -83,10 +85,10 @@ def test_earlier_invitation_is_not_replaced_by_later_same_unit_message():
     queue.offer(first)
     queue.offer(second)
     assert len(queue.pending) == 2
-    snapshot = queue.take(110, active=True, context=(first, second))
+    snapshot = queue.take(110, context=(first, second))
     assert snapshot.focus == first
     queue.finish(snapshot.sequence)
-    assert queue.take(118, active=True, context=(first, second)).focus == second
+    assert queue.take(122, context=(first, second)).focus == second
 
 
 def test_priority_focus_survives_bounded_queue_overflow():
@@ -96,7 +98,7 @@ def test_priority_focus_survives_bounded_queue_overflow():
     queue.offer(event("ordinary-1", at=101))
     queue.offer(event("ordinary-2", at=102))
     assert set(queue.pending) == {"named", "ordinary-2"}
-    assert queue.take(110, active=True, context=()).focus == named
+    assert queue.take(110, context=()).focus == named
 
 
 def test_ready_other_unit_is_not_blocked_by_updated_head():
@@ -108,7 +110,7 @@ def test_ready_other_unit_is_not_blocked_by_updated_head():
     queue.offer(
         head.model_copy(update={"at": 120, "ref": head.ref.model_copy(update={"revision": 2})})
     )
-    assert queue.take(110, active=True, context=()).focus == other
+    assert queue.take(110, context=()).focus == other
 
 
 def test_recent_ready_focus_precedes_older_ordinary_foci():
@@ -117,10 +119,10 @@ def test_recent_ready_focus_precedes_older_ordinary_foci():
     queue.offer(event("two", at=101))
     other = event("other", at=102).model_copy(update={"thread": "other"})
     queue.offer(other)
-    snapshot = queue.take(110, active=True, context=())
+    snapshot = queue.take(110, context=())
     assert snapshot.focus == other
     queue.finish(snapshot.sequence)
-    assert queue.take(118, active=True, context=()).focus.ref.event_id == "two"
+    assert queue.take(122, context=()).focus.ref.event_id == "two"
 
 
 def test_unknown_success_and_quiet_group_are_not_outages():

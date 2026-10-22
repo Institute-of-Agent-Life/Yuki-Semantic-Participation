@@ -25,18 +25,18 @@ Assignment／Presence ID 留在本地原 Snapshot。kind=yuki 明确提到当前
 不补查、不重写原已付请求；快照与独立存储的 serde 保原 ID 和原名称。
 
 Jev 使用原生 `model/state/questions → answers/usage`，默认模型 `jev-1.13.0`，
-rubric `v6-zh-5`。请求使用中性 eN/tN、原文、作者、关系、引用、相对时间和省略说明。
+rubric `v6-zh-6`。请求使用中性 eN/tN、原文、作者、关系、引用、相对时间和省略说明。
 scope、generation、revision、请求序号等本地管理字段不发送。
 Snapshot 保留 Host 实际提供的材料，DTO 不另加实验字节或条目帽；实际 Provider 容量错误正常返回，
 字节不是 token，token 只记录真实 usage。
 
 `JevObserver(..., identity=...)` 要求 Host 提供同步身份回调，返回当前角色的
-`display_name` 与显式 `aliases`。编码每个新请求时读取一次，放入 `state.agent_identity`，
+`display_name` 与显式 `aliases`。编码每个新请求时读取一次，放入 `state.agent_identity`，固定提示里的 `{{name}}` 在同次编码展开，
 只作为结合原生提及、引用与上下文识别对象的资料，不是扮演角色或修改评分规则的指令。
 本库不加载人格文件，不推断性别，不由名字创建身份或权限。
 `invite_yuki`、`extend_yuki`、`ask_yuki_stop`、`floor_state.yuki` 和 `yuki_participation`
 保留原协议含义；这里的 yuki 是标签，不是当前角色的名字。
-评分选项与控制语义未变，rubric 仍为 `v6-zh-5`，原已应用事实与 Controller 状态不重置。
+评分协议键不变；v6-zh-6 简化文案，确认/致谢允许自然收束，原已应用事实与 Controller 状态不重置。
 后续新观察使用调用时的身份参考；改名本身不排观察、不改 Snapshot，不改写已编码请求或已有结果。
 
 interaction、information、floor 是新资格的必需维度，缺失或非法保留诊断并计失败；
@@ -45,7 +45,7 @@ interaction、information、floor 是新资格的必需维度，缺失或非法�
 
 ## 冻结的参与意愿
 
-原队列取出真实焦点后，`Controller.freeze_observation` 冻结当时合法意愿及本地复核位置。
+原队列取出真实焦点后，`Controller.freeze_observation` 冻结当时合法意愿及原关系来源。
 新投影为 `semantic-state-v3`，外发结构示例为：
 
 ~~~json
@@ -104,7 +104,7 @@ master off 是 off；显式关闭 semantic 才使用 Host legacy。缺 key、观
 422 丢弃该次无效请求，没有新鲜真人材料不做空探测。旧 configuration_valid 读取后丢弃。
 last_failure 只留类别、HTTP 状态、时间和可信来源，不保存异常正文或密钥。
 
-## 普通参与与有限快路
+## 普通参与与稀疏复核
 
 `participating_units` 返回真实保留状态，包含 quiet/closed，Host 的 active 消费者才排除它们。
 `participation_actor_ids` 只读取原 checkpoint 中真人单元的 actor/target ID，供 Host 批量准备
@@ -123,26 +123,41 @@ Host 以 `UnitBinding(scope, unit, actor, basis)` 关联普通接纳。单元保
 input_ref/last_at 独立前进，每次表达和 hint 保留自己的来源，不无限累积历轮祖先依赖。
 
 - `observe_unit_input(binding, ref, continuation=False)` 登记真实输入并消费原事件。Host 只对
-  原普通 continuation 传 True，按同一来源记一次快接；接纳不伪造观察或真实表达。
+  原普通 continuation 传 True，幂等保留真实 continuation_refs；接纳不伪造观察或真实表达。
 - `observe_unit_hint` 保存可选 join/stay/quiet，限定原 unit，不制造用户 stop。
   旧报告不能覆盖更新意愿，也不重建被撤销的来源。无报告不补问。
 - `observe_unit_expression` 按原 effect/run 关联真实 message，compute/tool 不冒充发言；
   多条真实物理锚点不重复累计逻辑表达。晚到回执照实入账，不重开已退役关系。
 
-`continuation_review_span` 默认 4，计同一讨论/对象未经语义确认的快捷接纳输入，
-不是消息条数、冷却时间或每日配额。Main 快接不等 Jev，原队列可并行复核真实焦点；
-匹配或已接纳不再让 needs_observation 自动 False，但仍需显式排队，不保证每条消息均评分。
+同人自动续聊不以复核次数或额度等待 Jev。`continuation_review_span`、`check_budget`、
+`unconfirmed_inputs` 与纯进度计数已删除；真实接纳来源仍保存在 `continuation_refs`，
+用于晚到反馈、来源撤销、同刻顺序与 quiet 覆盖证明，不计数、不授予资格。
 
-自身 quiet 和 other_exchange/转题/真实停止分别收起原快路，不能以 OR 互相放行。
-自身 stay、发送、unknown、缺维度或观察故障都不续确认额度；达到跨度的新输入回原语义入口。
-真实新邀请保留原即时入口，不是全群禁言。正向确认只推进原焦点的位置，
-不能因后续 C/D 出现在 context 或 HTTP 期间到达就批量清零。
-hydrate、重复回调、steer/排队竞争、重启不重复计数；原最小接纳身份仍用于晚到报告排序。
+自身 quiet 和 other_exchange/转题/真实停止分别收起原快路；stay、发送、unknown、
+缺维度或观察故障不能抹掉真实否定。未知 verdict 保原实现不更新单元 review。
+Host 在尚未接纳的 promotion/selected 边界重新核 `continuation_current`；
+已接纳 Main、Work、预算和发送回执不因新纠偏倒退，不重新执行或重发。
+`participation_view.addressed` 同样排除被较新真实否定或 quiet 覆盖的旧邀请；
+真正较新的邀请仍可唤起。实际停止不是发言者的群管理权限：同讨论的真实新邀请可以释放原停止，
+不要求邀请者等于停止者，也不要求局部新邀请先自称整个群级邀请。
+同人的当前闭合读取、重新邀请与撤回后重新选择释放来源，沿本次 Host 的 actor_identity 比较目标；
+Boundary、原事件、报告和回执继续保原 Person ID。Host 在真实来源失效时同批准备身份，传入
+`observe_source_change(ref, actor_identity=identity)`，不为每条来源重复查身份或永久缓存映射。
 
-Host 在未接纳队列的 promotion/selected writer 核 `continuation_current`，正文 revision
-没变也要消费最新退出事实。原 Main 合法补充的 `check_budget=False` 只跳新 activation 的跨度，
-仍核验来源、quiet 和语义资格；原 Work 输入沿原匹配/接纳，不被 K 误伤。
-已接纳 Main、预算和真实发送不因纠正倒退，不重跑或重发已交付结果。
+观察只合并已经唯一匹配同一单元、非优先级的普通续聊待办。独立邀请、未匹配或歧义焦点分别保留；
+上下文包含某条消息不表示它已独立评分。待办用同一份来源的单元索引平均 O(1) 替换，
+保最早 first_dirty，避免持续输入使去抖永远重置；选择、源校验和上下文整理仍按原有界队列处理，
+不宣称整条链为 O(1)，不增加数据库读取或持久身份缓存。
+
+统一复用 3 秒去抖、12 秒最短调用间隔、20 秒最长去抖等待；第一次 last_call=-inf，
+没有新材料没有周期请求，重新邀请不重置 last_call。最长去抖等待不包含在途 HTTP、退避或其它单元等待。
+已付 Snapshot 不改写；在途新输入成为下一次最新待评。失败/取消和冷恢复不把被新材料替换的旧焦点复活。
+
+quiet 仅清原已接纳续聊且能由来源次序或 hint_basis 实际观察证明覆盖的未派发复核。
+Host 可在原 binding.basis 中纳入该次真正已交给模型观察的原 admission 来源，
+report.source/at 仍保原触发；不能按 selected、全群 max id 或时间猜覆盖。
+未接纳焦点、新邀请和在途请求不清退。仅改变自身状态不购买补评。
+同时间上下文按可证明的 source_order 排列，排除已知晚于焦点的来源；缺顺序不按 opaque ID 猜先后。
 
 普通 `SelfReport.source` 指向原输入，`ScopedEvent.source_order` 是 Host 提供的原内部顺序
 （Yuki 用账本 row.id），并随 SeenSource/最小接纳事实保留。
@@ -170,8 +185,9 @@ RECALL/CONTACT 枚举只读历史提议，不进入新观察或采样。
 保留原报告身份与合法 engage，mood-only 不创建空状态。输出尾段由 Host 在可见发送前剥离，
 无效尾段不重试主模型，子 Agent 不代报主回合。
 
-`participation_v1` 保留原 namespace 与 SnapshotStore CAS。旧 unit 缺 `fast_inputs`
-表示未知，不当作 0 或新满额，真实新语义确认才建立已知进度。
+`participation_v1` 保留原 namespace 与 SnapshotStore CAS。一次性读取升级把旧 fast_inputs 的
+真实来源转为 continuation_refs，清退 fast_sequence / covered_fast_sequence；
+原 binding、hint、review、原来源与顺序保留，缺旧进度不丢整份有效 checkpoint。
 正文最多 600 秒、256 条/256 KiB，裁剪不等于交流自动过期；必要 seen/source_order、
 retired_refs、当前意愿、最小表达及复核依据随原单元保留。
 真实修改/撤回继续撤销来源，quiet 与实际关闭不因裁剪或重启解除。
@@ -183,8 +199,8 @@ actor、来源修订和退休证明识别原单元；这保留已有读合同，
 ## 升级与回退
 
 升级同时固定库修订与 Host lock，保存数据库、原协议/工具文件和挂载配置的完整备份。
-仅清退三个种子参数 independent_source_factor、recall_source_decay_seconds、contact_source_decay_seconds，
-其它实际覆盖保留，任意未知字段仍严格校验；新复核跨度沿原参数加载，不重置预算或采样事实。
+清退三个种子参数及 continuation_review_span 废键，其它实际覆盖保留，任意未知字段仍严格校验；
+不因一个已废键拒绝整份有效配置，不重置预算、采样事实或原执行。
 
 旧付费协议和 trace 保留原件，新请求使用新投影/rubric；历史重构必须用其原版本，
 不把当前编码结果称为抓到的历史 HTTP 原字节。新意愿或复核状态不制造兼容重跑或补发。

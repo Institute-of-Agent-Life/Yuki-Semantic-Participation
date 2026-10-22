@@ -1,0 +1,1130 @@
+{
+  "evidence": "Actual ObservationSession with synthetic observer, anonymous sources and virtual time; no paid API calls",
+  "original_revision": "438f204f9ebe2b8c1b698b68c0f1b3ac8b4facef",
+  "profiles": {
+    "original": [
+      2,
+      8,
+      15
+    ],
+    "coalesced_queue_only": [
+      2,
+      8,
+      15
+    ],
+    "sparse": [
+      3,
+      12,
+      20
+    ]
+  },
+  "queue_only_boundary": "Original controller/session with only new queue, offer/retry integration and original active timing",
+  "tick_seconds": 2,
+  "observer_elapsed_seconds": 6.002977,
+  "drain_seconds": 90,
+  "not_simulated": "Main execution, Host state-change extra review requests, provider accuracy, real tokens/cache or online latency",
+  "rows": [
+    {
+      "variant": "original",
+      "scenario": "burst",
+      "message_gap_seconds": 1,
+      "source_count": 12,
+      "observation_requests_enqueued": 12,
+      "observer_evaluate_starts": 10,
+      "fast_admitted": 5,
+      "replaced_pending": 0,
+      "max_pending": 10,
+      "expired": 2,
+      "dropped": 0,
+      "remaining_pending": 0,
+      "transport_failures": 0,
+      "request_timeline": [
+        {
+          "at": 102,
+          "focus_at": 100.0
+        },
+        {
+          "at": 110,
+          "focus_at": 108.0
+        },
+        {
+          "at": 118,
+          "focus_at": 111.0
+        },
+        {
+          "at": 126,
+          "focus_at": 110.0
+        },
+        {
+          "at": 134,
+          "focus_at": 109.0
+        },
+        {
+          "at": 142,
+          "focus_at": 107.0
+        },
+        {
+          "at": 150,
+          "focus_at": 106.0
+        },
+        {
+          "at": 158,
+          "focus_at": 105.0
+        },
+        {
+          "at": 166,
+          "focus_at": 104.0
+        },
+        {
+          "at": 174,
+          "focus_at": 103.0
+        }
+      ],
+      "focus_to_result_seconds": {
+        "min": 10.0,
+        "max": 79.0
+      },
+      "topic_change_to_brake_seconds": null
+    },
+    {
+      "variant": "original",
+      "scenario": "continuous",
+      "message_gap_seconds": 1,
+      "source_count": 90,
+      "observation_requests_enqueued": 90,
+      "observer_evaluate_starts": 20,
+      "fast_admitted": 24,
+      "replaced_pending": 0,
+      "max_pending": 64,
+      "expired": 55,
+      "dropped": 15,
+      "remaining_pending": 0,
+      "transport_failures": 0,
+      "request_timeline": [
+        {
+          "at": 102,
+          "focus_at": 100.0
+        },
+        {
+          "at": 110,
+          "focus_at": 108.0
+        },
+        {
+          "at": 118,
+          "focus_at": 116.0
+        },
+        {
+          "at": 126,
+          "focus_at": 124.0
+        },
+        {
+          "at": 134,
+          "focus_at": 132.0
+        },
+        {
+          "at": 142,
+          "focus_at": 140.0
+        },
+        {
+          "at": 150,
+          "focus_at": 148.0
+        },
+        {
+          "at": 158,
+          "focus_at": 156.0
+        },
+        {
+          "at": 166,
+          "focus_at": 164.0
+        },
+        {
+          "at": 174,
+          "focus_at": 172.0
+        },
+        {
+          "at": 182,
+          "focus_at": 180.0
+        },
+        {
+          "at": 190,
+          "focus_at": 188.0
+        },
+        {
+          "at": 198,
+          "focus_at": 189.0
+        },
+        {
+          "at": 206,
+          "focus_at": 187.0
+        },
+        {
+          "at": 214,
+          "focus_at": 186.0
+        },
+        {
+          "at": 222,
+          "focus_at": 185.0
+        },
+        {
+          "at": 230,
+          "focus_at": 184.0
+        },
+        {
+          "at": 238,
+          "focus_at": 183.0
+        },
+        {
+          "at": 246,
+          "focus_at": 182.0
+        },
+        {
+          "at": 254,
+          "focus_at": 181.0
+        }
+      ],
+      "focus_to_result_seconds": {
+        "min": 10.0,
+        "max": 81.0
+      },
+      "topic_change_to_brake_seconds": null
+    },
+    {
+      "variant": "original",
+      "scenario": "sparse",
+      "message_gap_seconds": 30,
+      "source_count": 3,
+      "observation_requests_enqueued": 3,
+      "observer_evaluate_starts": 3,
+      "fast_admitted": 3,
+      "replaced_pending": 0,
+      "max_pending": 1,
+      "expired": 0,
+      "dropped": 0,
+      "remaining_pending": 0,
+      "transport_failures": 0,
+      "request_timeline": [
+        {
+          "at": 102,
+          "focus_at": 100.0
+        },
+        {
+          "at": 132,
+          "focus_at": 130.0
+        },
+        {
+          "at": 162,
+          "focus_at": 160.0
+        }
+      ],
+      "focus_to_result_seconds": {
+        "min": 10.0,
+        "max": 10.0
+      },
+      "topic_change_to_brake_seconds": null
+    },
+    {
+      "variant": "original",
+      "scenario": "independent",
+      "message_gap_seconds": 3,
+      "source_count": 10,
+      "observation_requests_enqueued": 10,
+      "observer_evaluate_starts": 10,
+      "fast_admitted": 0,
+      "replaced_pending": 0,
+      "max_pending": 6,
+      "expired": 0,
+      "dropped": 0,
+      "remaining_pending": 0,
+      "transport_failures": 0,
+      "request_timeline": [
+        {
+          "at": 102,
+          "focus_at": 100.0
+        },
+        {
+          "at": 110,
+          "focus_at": 103.0
+        },
+        {
+          "at": 118,
+          "focus_at": 106.0
+        },
+        {
+          "at": 126,
+          "focus_at": 109.0
+        },
+        {
+          "at": 134,
+          "focus_at": 112.0
+        },
+        {
+          "at": 142,
+          "focus_at": 115.0
+        },
+        {
+          "at": 150,
+          "focus_at": 118.0
+        },
+        {
+          "at": 158,
+          "focus_at": 121.0
+        },
+        {
+          "at": 166,
+          "focus_at": 124.0
+        },
+        {
+          "at": 174,
+          "focus_at": 127.0
+        }
+      ],
+      "focus_to_result_seconds": {
+        "min": 10.0,
+        "max": 55.0
+      },
+      "topic_change_to_brake_seconds": null
+    },
+    {
+      "variant": "original",
+      "scenario": "quiet",
+      "message_gap_seconds": 1,
+      "source_count": 12,
+      "observation_requests_enqueued": 12,
+      "observer_evaluate_starts": 10,
+      "fast_admitted": 5,
+      "replaced_pending": 0,
+      "max_pending": 10,
+      "expired": 2,
+      "dropped": 0,
+      "remaining_pending": 0,
+      "transport_failures": 0,
+      "request_timeline": [
+        {
+          "at": 102,
+          "focus_at": 100.0
+        },
+        {
+          "at": 110,
+          "focus_at": 108.0
+        },
+        {
+          "at": 118,
+          "focus_at": 111.0
+        },
+        {
+          "at": 126,
+          "focus_at": 110.0
+        },
+        {
+          "at": 134,
+          "focus_at": 109.0
+        },
+        {
+          "at": 142,
+          "focus_at": 107.0
+        },
+        {
+          "at": 150,
+          "focus_at": 106.0
+        },
+        {
+          "at": 158,
+          "focus_at": 105.0
+        },
+        {
+          "at": 166,
+          "focus_at": 104.0
+        },
+        {
+          "at": 174,
+          "focus_at": 103.0
+        }
+      ],
+      "focus_to_result_seconds": {
+        "min": 10.0,
+        "max": 79.0
+      },
+      "topic_change_to_brake_seconds": null
+    },
+    {
+      "variant": "original",
+      "scenario": "failure",
+      "message_gap_seconds": 3,
+      "source_count": 30,
+      "observation_requests_enqueued": 30,
+      "observer_evaluate_starts": 15,
+      "fast_admitted": 16,
+      "replaced_pending": 0,
+      "max_pending": 20,
+      "expired": 16,
+      "dropped": 0,
+      "remaining_pending": 0,
+      "transport_failures": 1,
+      "request_timeline": [
+        {
+          "at": 102,
+          "focus_at": 100.0
+        },
+        {
+          "at": 132,
+          "focus_at": 130.0
+        },
+        {
+          "at": 140,
+          "focus_at": 136.0
+        },
+        {
+          "at": 148,
+          "focus_at": 145.0
+        },
+        {
+          "at": 156,
+          "focus_at": 154.0
+        },
+        {
+          "at": 164,
+          "focus_at": 160.0
+        },
+        {
+          "at": 172,
+          "focus_at": 169.0
+        },
+        {
+          "at": 180,
+          "focus_at": 178.0
+        },
+        {
+          "at": 188,
+          "focus_at": 184.0
+        },
+        {
+          "at": 196,
+          "focus_at": 187.0
+        },
+        {
+          "at": 204,
+          "focus_at": 181.0
+        },
+        {
+          "at": 212,
+          "focus_at": 175.0
+        },
+        {
+          "at": 220,
+          "focus_at": 172.0
+        },
+        {
+          "at": 228,
+          "focus_at": 166.0
+        },
+        {
+          "at": 236,
+          "focus_at": 163.0
+        }
+      ],
+      "focus_to_result_seconds": {
+        "min": 10.0,
+        "max": 81.0
+      },
+      "topic_change_to_brake_seconds": null
+    },
+    {
+      "variant": "original",
+      "scenario": "topic_change",
+      "message_gap_seconds": 3,
+      "source_count": 30,
+      "observation_requests_enqueued": 30,
+      "observer_evaluate_starts": 17,
+      "fast_admitted": 11,
+      "replaced_pending": 0,
+      "max_pending": 17,
+      "expired": 13,
+      "dropped": 0,
+      "remaining_pending": 0,
+      "transport_failures": 0,
+      "request_timeline": [
+        {
+          "at": 102,
+          "focus_at": 100.0
+        },
+        {
+          "at": 110,
+          "focus_at": 106.0
+        },
+        {
+          "at": 118,
+          "focus_at": 115.0
+        },
+        {
+          "at": 126,
+          "focus_at": 124.0
+        },
+        {
+          "at": 134,
+          "focus_at": 130.0
+        },
+        {
+          "at": 142,
+          "focus_at": 139.0
+        },
+        {
+          "at": 150,
+          "focus_at": 148.0
+        },
+        {
+          "at": 158,
+          "focus_at": 154.0
+        },
+        {
+          "at": 166,
+          "focus_at": 163.0
+        },
+        {
+          "at": 174,
+          "focus_at": 172.0
+        },
+        {
+          "at": 182,
+          "focus_at": 178.0
+        },
+        {
+          "at": 190,
+          "focus_at": 187.0
+        },
+        {
+          "at": 198,
+          "focus_at": 184.0
+        },
+        {
+          "at": 206,
+          "focus_at": 181.0
+        },
+        {
+          "at": 214,
+          "focus_at": 175.0
+        },
+        {
+          "at": 222,
+          "focus_at": 169.0
+        },
+        {
+          "at": 230,
+          "focus_at": 166.0
+        }
+      ],
+      "focus_to_result_seconds": {
+        "min": 10.0,
+        "max": 72.0
+      },
+      "topic_change_to_brake_seconds": 12
+    },
+    {
+      "variant": "coalesced_queue_only",
+      "scenario": "burst",
+      "message_gap_seconds": 1,
+      "source_count": 12,
+      "observation_requests_enqueued": 12,
+      "observer_evaluate_starts": 1,
+      "fast_admitted": 4,
+      "replaced_pending": 11,
+      "max_pending": 1,
+      "expired": 0,
+      "dropped": 0,
+      "remaining_pending": 0,
+      "transport_failures": 0,
+      "request_timeline": [
+        {
+          "at": 114,
+          "focus_at": 111.0
+        }
+      ],
+      "focus_to_result_seconds": {
+        "min": 11.0,
+        "max": 11.0
+      },
+      "topic_change_to_brake_seconds": null
+    },
+    {
+      "variant": "coalesced_queue_only",
+      "scenario": "continuous",
+      "message_gap_seconds": 1,
+      "source_count": 90,
+      "observation_requests_enqueued": 90,
+      "observer_evaluate_starts": 6,
+      "fast_admitted": 21,
+      "replaced_pending": 84,
+      "max_pending": 1,
+      "expired": 0,
+      "dropped": 0,
+      "remaining_pending": 0,
+      "transport_failures": 0,
+      "request_timeline": [
+        {
+          "at": 116,
+          "focus_at": 116.0
+        },
+        {
+          "at": 132,
+          "focus_at": 132.0
+        },
+        {
+          "at": 148,
+          "focus_at": 148.0
+        },
+        {
+          "at": 164,
+          "focus_at": 164.0
+        },
+        {
+          "at": 180,
+          "focus_at": 180.0
+        },
+        {
+          "at": 192,
+          "focus_at": 189.0
+        }
+      ],
+      "focus_to_result_seconds": {
+        "min": 8.0,
+        "max": 11.0
+      },
+      "topic_change_to_brake_seconds": null
+    },
+    {
+      "variant": "coalesced_queue_only",
+      "scenario": "sparse",
+      "message_gap_seconds": 30,
+      "source_count": 3,
+      "observation_requests_enqueued": 3,
+      "observer_evaluate_starts": 3,
+      "fast_admitted": 3,
+      "replaced_pending": 0,
+      "max_pending": 1,
+      "expired": 0,
+      "dropped": 0,
+      "remaining_pending": 0,
+      "transport_failures": 0,
+      "request_timeline": [
+        {
+          "at": 102,
+          "focus_at": 100.0
+        },
+        {
+          "at": 132,
+          "focus_at": 130.0
+        },
+        {
+          "at": 162,
+          "focus_at": 160.0
+        }
+      ],
+      "focus_to_result_seconds": {
+        "min": 10.0,
+        "max": 10.0
+      },
+      "topic_change_to_brake_seconds": null
+    },
+    {
+      "variant": "coalesced_queue_only",
+      "scenario": "independent",
+      "message_gap_seconds": 3,
+      "source_count": 10,
+      "observation_requests_enqueued": 10,
+      "observer_evaluate_starts": 10,
+      "fast_admitted": 0,
+      "replaced_pending": 0,
+      "max_pending": 6,
+      "expired": 0,
+      "dropped": 0,
+      "remaining_pending": 0,
+      "transport_failures": 0,
+      "request_timeline": [
+        {
+          "at": 102,
+          "focus_at": 100.0
+        },
+        {
+          "at": 110,
+          "focus_at": 103.0
+        },
+        {
+          "at": 118,
+          "focus_at": 106.0
+        },
+        {
+          "at": 126,
+          "focus_at": 109.0
+        },
+        {
+          "at": 134,
+          "focus_at": 112.0
+        },
+        {
+          "at": 142,
+          "focus_at": 115.0
+        },
+        {
+          "at": 150,
+          "focus_at": 118.0
+        },
+        {
+          "at": 158,
+          "focus_at": 121.0
+        },
+        {
+          "at": 166,
+          "focus_at": 124.0
+        },
+        {
+          "at": 174,
+          "focus_at": 127.0
+        }
+      ],
+      "focus_to_result_seconds": {
+        "min": 10.0,
+        "max": 55.0
+      },
+      "topic_change_to_brake_seconds": null
+    },
+    {
+      "variant": "coalesced_queue_only",
+      "scenario": "quiet",
+      "message_gap_seconds": 1,
+      "source_count": 12,
+      "observation_requests_enqueued": 12,
+      "observer_evaluate_starts": 1,
+      "fast_admitted": 4,
+      "replaced_pending": 11,
+      "max_pending": 1,
+      "expired": 0,
+      "dropped": 0,
+      "remaining_pending": 0,
+      "transport_failures": 0,
+      "request_timeline": [
+        {
+          "at": 114,
+          "focus_at": 111.0
+        }
+      ],
+      "focus_to_result_seconds": {
+        "min": 11.0,
+        "max": 11.0
+      },
+      "topic_change_to_brake_seconds": null
+    },
+    {
+      "variant": "coalesced_queue_only",
+      "scenario": "failure",
+      "message_gap_seconds": 3,
+      "source_count": 30,
+      "observation_requests_enqueued": 30,
+      "observer_evaluate_starts": 7,
+      "fast_admitted": 14,
+      "replaced_pending": 23,
+      "max_pending": 1,
+      "expired": 0,
+      "dropped": 0,
+      "remaining_pending": 0,
+      "transport_failures": 1,
+      "request_timeline": [
+        {
+          "at": 102,
+          "focus_at": 100.0
+        },
+        {
+          "at": 132,
+          "focus_at": 130.0
+        },
+        {
+          "at": 144,
+          "focus_at": 142.0
+        },
+        {
+          "at": 156,
+          "focus_at": 154.0
+        },
+        {
+          "at": 168,
+          "focus_at": 166.0
+        },
+        {
+          "at": 180,
+          "focus_at": 178.0
+        },
+        {
+          "at": 190,
+          "focus_at": 187.0
+        }
+      ],
+      "focus_to_result_seconds": {
+        "min": 10.0,
+        "max": 11.0
+      },
+      "topic_change_to_brake_seconds": null
+    },
+    {
+      "variant": "coalesced_queue_only",
+      "scenario": "topic_change",
+      "message_gap_seconds": 3,
+      "source_count": 30,
+      "observation_requests_enqueued": 30,
+      "observer_evaluate_starts": 16,
+      "fast_admitted": 10,
+      "replaced_pending": 11,
+      "max_pending": 10,
+      "expired": 3,
+      "dropped": 0,
+      "remaining_pending": 0,
+      "transport_failures": 0,
+      "request_timeline": [
+        {
+          "at": 102,
+          "focus_at": 100.0
+        },
+        {
+          "at": 114,
+          "focus_at": 112.0
+        },
+        {
+          "at": 126,
+          "focus_at": 124.0
+        },
+        {
+          "at": 138,
+          "focus_at": 136.0
+        },
+        {
+          "at": 148,
+          "focus_at": 145.0
+        },
+        {
+          "at": 156,
+          "focus_at": 154.0
+        },
+        {
+          "at": 164,
+          "focus_at": 160.0
+        },
+        {
+          "at": 172,
+          "focus_at": 169.0
+        },
+        {
+          "at": 180,
+          "focus_at": 178.0
+        },
+        {
+          "at": 188,
+          "focus_at": 184.0
+        },
+        {
+          "at": 196,
+          "focus_at": 187.0
+        },
+        {
+          "at": 204,
+          "focus_at": 181.0
+        },
+        {
+          "at": 212,
+          "focus_at": 175.0
+        },
+        {
+          "at": 220,
+          "focus_at": 172.0
+        },
+        {
+          "at": 228,
+          "focus_at": 166.0
+        },
+        {
+          "at": 236,
+          "focus_at": 163.0
+        }
+      ],
+      "focus_to_result_seconds": {
+        "min": 10.0,
+        "max": 81.0
+      },
+      "topic_change_to_brake_seconds": 16
+    },
+    {
+      "variant": "sparse",
+      "scenario": "burst",
+      "message_gap_seconds": 1,
+      "source_count": 12,
+      "observation_requests_enqueued": 12,
+      "observer_evaluate_starts": 1,
+      "fast_admitted": 12,
+      "replaced_pending": 11,
+      "max_pending": 1,
+      "expired": 0,
+      "dropped": 0,
+      "remaining_pending": 0,
+      "transport_failures": 0,
+      "request_timeline": [
+        {
+          "at": 114,
+          "focus_at": 111.0
+        }
+      ],
+      "focus_to_result_seconds": {
+        "min": 11.0,
+        "max": 11.0
+      },
+      "topic_change_to_brake_seconds": null
+    },
+    {
+      "variant": "sparse",
+      "scenario": "continuous",
+      "message_gap_seconds": 1,
+      "source_count": 90,
+      "observation_requests_enqueued": 90,
+      "observer_evaluate_starts": 5,
+      "fast_admitted": 90,
+      "replaced_pending": 85,
+      "max_pending": 1,
+      "expired": 0,
+      "dropped": 0,
+      "remaining_pending": 0,
+      "transport_failures": 0,
+      "request_timeline": [
+        {
+          "at": 120,
+          "focus_at": 120.0
+        },
+        {
+          "at": 142,
+          "focus_at": 142.0
+        },
+        {
+          "at": 164,
+          "focus_at": 164.0
+        },
+        {
+          "at": 186,
+          "focus_at": 186.0
+        },
+        {
+          "at": 198,
+          "focus_at": 189.0
+        }
+      ],
+      "focus_to_result_seconds": {
+        "min": 8.0,
+        "max": 17.0
+      },
+      "topic_change_to_brake_seconds": null
+    },
+    {
+      "variant": "sparse",
+      "scenario": "sparse",
+      "message_gap_seconds": 30,
+      "source_count": 3,
+      "observation_requests_enqueued": 3,
+      "observer_evaluate_starts": 3,
+      "fast_admitted": 3,
+      "replaced_pending": 0,
+      "max_pending": 1,
+      "expired": 0,
+      "dropped": 0,
+      "remaining_pending": 0,
+      "transport_failures": 0,
+      "request_timeline": [
+        {
+          "at": 104,
+          "focus_at": 100.0
+        },
+        {
+          "at": 134,
+          "focus_at": 130.0
+        },
+        {
+          "at": 164,
+          "focus_at": 160.0
+        }
+      ],
+      "focus_to_result_seconds": {
+        "min": 12.0,
+        "max": 12.0
+      },
+      "topic_change_to_brake_seconds": null
+    },
+    {
+      "variant": "sparse",
+      "scenario": "independent",
+      "message_gap_seconds": 3,
+      "source_count": 10,
+      "observation_requests_enqueued": 10,
+      "observer_evaluate_starts": 9,
+      "fast_admitted": 0,
+      "replaced_pending": 0,
+      "max_pending": 8,
+      "expired": 1,
+      "dropped": 0,
+      "remaining_pending": 0,
+      "transport_failures": 0,
+      "request_timeline": [
+        {
+          "at": 104,
+          "focus_at": 100.0
+        },
+        {
+          "at": 116,
+          "focus_at": 103.0
+        },
+        {
+          "at": 128,
+          "focus_at": 106.0
+        },
+        {
+          "at": 140,
+          "focus_at": 109.0
+        },
+        {
+          "at": 152,
+          "focus_at": 112.0
+        },
+        {
+          "at": 164,
+          "focus_at": 115.0
+        },
+        {
+          "at": 176,
+          "focus_at": 118.0
+        },
+        {
+          "at": 188,
+          "focus_at": 121.0
+        },
+        {
+          "at": 200,
+          "focus_at": 127.0
+        }
+      ],
+      "focus_to_result_seconds": {
+        "min": 12.0,
+        "max": 81.0
+      },
+      "topic_change_to_brake_seconds": null
+    },
+    {
+      "variant": "sparse",
+      "scenario": "quiet",
+      "message_gap_seconds": 1,
+      "source_count": 12,
+      "observation_requests_enqueued": 12,
+      "observer_evaluate_starts": 0,
+      "fast_admitted": 12,
+      "replaced_pending": 11,
+      "max_pending": 1,
+      "expired": 0,
+      "dropped": 0,
+      "remaining_pending": 0,
+      "transport_failures": 0,
+      "request_timeline": [],
+      "focus_to_result_seconds": null,
+      "topic_change_to_brake_seconds": null
+    },
+    {
+      "variant": "sparse",
+      "scenario": "failure",
+      "message_gap_seconds": 3,
+      "source_count": 30,
+      "observation_requests_enqueued": 30,
+      "observer_evaluate_starts": 4,
+      "fast_admitted": 30,
+      "replaced_pending": 26,
+      "max_pending": 1,
+      "expired": 0,
+      "dropped": 0,
+      "remaining_pending": 0,
+      "transport_failures": 1,
+      "request_timeline": [
+        {
+          "at": 120,
+          "focus_at": 118.0
+        },
+        {
+          "at": 150,
+          "focus_at": 148.0
+        },
+        {
+          "at": 172,
+          "focus_at": 172.0
+        },
+        {
+          "at": 190,
+          "focus_at": 187.0
+        }
+      ],
+      "focus_to_result_seconds": {
+        "min": 8.0,
+        "max": 11.0
+      },
+      "topic_change_to_brake_seconds": null
+    },
+    {
+      "variant": "sparse",
+      "scenario": "topic_change",
+      "message_gap_seconds": 3,
+      "source_count": 30,
+      "observation_requests_enqueued": 30,
+      "observer_evaluate_starts": 10,
+      "fast_admitted": 17,
+      "replaced_pending": 14,
+      "max_pending": 11,
+      "expired": 6,
+      "dropped": 0,
+      "remaining_pending": 0,
+      "transport_failures": 0,
+      "request_timeline": [
+        {
+          "at": 120,
+          "focus_at": 118.0
+        },
+        {
+          "at": 142,
+          "focus_at": 142.0
+        },
+        {
+          "at": 154,
+          "focus_at": 151.0
+        },
+        {
+          "at": 166,
+          "focus_at": 163.0
+        },
+        {
+          "at": 178,
+          "focus_at": 175.0
+        },
+        {
+          "at": 190,
+          "focus_at": 187.0
+        },
+        {
+          "at": 202,
+          "focus_at": 184.0
+        },
+        {
+          "at": 214,
+          "focus_at": 181.0
+        },
+        {
+          "at": 226,
+          "focus_at": 178.0
+        },
+        {
+          "at": 238,
+          "focus_at": 172.0
+        }
+      ],
+      "focus_to_result_seconds": {
+        "min": 8.0,
+        "max": 74.0
+      },
+      "topic_change_to_brake_seconds": 20
+    }
+  ]
+}
