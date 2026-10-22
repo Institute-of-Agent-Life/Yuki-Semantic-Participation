@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Literal
 
-from pydantic import Field
+from pydantic import Field, model_validator
 
 from .models import Choice, Record, Scope, SourceRef, Timestamp
 from .self_report import SelfReport
@@ -24,13 +24,6 @@ class UnitBinding(Record):
     basis: tuple[SourceRef, ...] = Field(min_length=1)
 
 
-class FastInput(Record):
-    source: SourceRef
-    at: Timestamp
-    sequence: int = Field(ge=1)
-    source_order: int | None = Field(default=None, ge=0)
-
-
 class UnitSemanticReview(Record):
     """Latest actual, source-bound interpretation of this relationship."""
 
@@ -43,7 +36,13 @@ class UnitSemanticReview(Record):
     interaction: Choice | None
     floor: Choice | None
     source_order: int | None = Field(default=None, ge=0)
-    covered_fast_sequence: int = Field(default=0, ge=0)
+
+    @model_validator(mode="before")
+    @classmethod
+    def retire_review_progress(cls, value: object) -> object:
+        if isinstance(value, dict):
+            return {key: item for key, item in value.items() if key != "covered_fast_sequence"}
+        return value
 
 
 class UnitState(Record):
@@ -54,10 +53,24 @@ class UnitState(Record):
     hint_basis: tuple[SourceRef, ...] = ()
     anchors: tuple[SourceRef, ...] = ()
     retired_refs: tuple[SourceRef, ...] = ()
-    fast_sequence: int = Field(default=0, ge=0)
-    # None means an old reader did not retain review progress, not a full allowance.
-    fast_inputs: tuple[FastInput, ...] | None = None
+    # Original admissions, needed for late feedback and equal-time source ordering.
+    # They never grant, spend or replenish continuation permission.
+    continuation_refs: tuple[SourceRef, ...] = ()
     review: UnitSemanticReview | None = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def retire_review_progress(cls, value: object) -> object:
+        if not isinstance(value, dict):
+            return value
+        result = {
+            key: item for key, item in value.items() if key not in {"fast_sequence", "fast_inputs"}
+        }
+        if "continuation_refs" not in result and "fast_inputs" in value:
+            result["continuation_refs"] = tuple(
+                item["source"] for item in (value["fast_inputs"] or ())
+            )
+        return result
 
 
 class ExpressionBinding(Record):
@@ -78,7 +91,6 @@ class UnitParticipation(Record):
     engage: Literal["join", "stay", "quiet"] | None = None
     expressed: bool = False
     closed: bool = False
-    unconfirmed_inputs: int | None = None
     semantic_continuation: bool = True
 
     @property

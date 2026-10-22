@@ -305,6 +305,6 @@ def test_observation_queue_keeps_implicit_self_anchor_in_context():
     fillers = tuple(source(f"filler-{index}", at=101 + index) for index in range(7))
     queue = ObservationQueue(c.state.scope)
     queue.offer(focus)
-    snapshot = queue.take(140, active=False, context=(anchor, *fillers))
+    snapshot = queue.take(140, context=(anchor, *fillers))
     assert snapshot is not None
     assert anchor in snapshot.context

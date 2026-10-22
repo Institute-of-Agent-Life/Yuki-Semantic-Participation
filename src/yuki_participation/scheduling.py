@@ -1,12 +1,15 @@
-"""Bounded round-robin observation coalescing and independent provider health."""
+"""Sparse source-bound observation coalescing and independent provider health."""
 
 from __future__ import annotations
 
 from collections import OrderedDict
+from collections.abc import Callable
 from dataclasses import dataclass
+from itertools import groupby
 from typing import Any
 
 from .models import CandidateKind, Scope, ScopedEvent, Snapshot
+from .participation import ParticipationUnit
 
 
 @dataclass
@@ -15,25 +18,41 @@ class Pending:
     kind: CandidateKind
     first_dirty: float
     last_dirty: float
+    unit: ParticipationUnit | None = None
 
 
 class ObservationQueue:
-    """One instance per scope; one in-flight request, bounded next snapshot sources."""
+    """One scope's original sources, with one replaceable review per matched unit."""
 
     def __init__(self, scope: Scope, *, max_pending: int = 64) -> None:
         self.scope = scope
         if max_pending < 1:
             raise ValueError("max_pending_must_be_positive")
         self.pending: OrderedDict[str, Pending] = OrderedDict()
+        # An index over pending, never an identity or semantic-result cache.
+        self._unit_pending: dict[ParticipationUnit, str] = {}
         self.max_pending = max_pending
         self.last_call = float("-inf")
         self.sequence = 0
         self.in_flight: Snapshot | None = None
+        self._in_flight_pending: Pending | None = None
         self.dropped = 0
         self.expired = 0
         self.invalidated = 0
 
-    def offer(self, event: ScopedEvent, kind: CandidateKind = CandidateKind.CONVERSATION) -> None:
+    def discard(self, key: str) -> Pending:
+        item = self.pending.pop(key)
+        if item.unit is not None:
+            self._unit_pending.pop(item.unit, None)
+        return item
+
+    def offer(
+        self,
+        event: ScopedEvent,
+        kind: CandidateKind = CandidateKind.CONVERSATION,
+        *,
+        unit: ParticipationUnit | None = None,
+    ) -> None:
         if kind is CandidateKind.INTRINSIC:
             raise ValueError("intrinsic_opportunity_has_no_semantic_focus")
         if (
@@ -42,10 +61,11 @@ class ObservationQueue:
             or kind is not CandidateKind.CONVERSATION
         ):
             return
-        # Coalesce revisions of the same fact, not different people/messages in one unit.
-        # Context inclusion is not a semantic evaluation of an earlier invitation.
+        if event.observation_priority:
+            unit = None
         key = event.ref.event_id
-        old = self.pending.get(key)
+        previous_key = self._unit_pending.get(unit, key) if unit is not None else key
+        old = self.pending.get(previous_key)
         if old and old.event.ref == event.ref:
             return
         if old and (
@@ -54,78 +74,93 @@ class ObservationQueue:
                 event.ref.event_id == old.event.ref.event_id
                 and event.ref.revision < old.event.ref.revision
             )
+            or (
+                event.at == old.event.at
+                and event.source_order is not None
+                and old.event.source_order is not None
+                and event.source_order < old.event.source_order
+            )
         ):
             return
-        self.pending[key] = Pending(event, kind, old.first_dirty if old else event.at, event.at)
+        if old is not None:
+            self.discard(previous_key)
+        # A revision can change which existing unit matches; retain only its current source.
+        same_source = self.pending.get(key)
+        if same_source is not None:
+            self.discard(key)
+        self.pending[key] = Pending(
+            event, kind, old.first_dirty if old else event.at, event.at, unit
+        )
+        if unit is not None:
+            self._unit_pending[unit] = key
         while len(self.pending) > self.max_pending:
             evict = next(
                 (key for key, item in self.pending.items() if not item.event.observation_priority),
                 next(iter(self.pending)),
             )
-            del self.pending[evict]
+            self.discard(evict)
             self.dropped += 1
 
     @staticmethod
     def expires_at(pending: Pending) -> float:
-        # A focus older than the conversation window is context, not a useful
-        # request to score. Candidate validity starts only after observation.
         return pending.event.at + 75
 
     def discard_unavailable(self, now: float, events: dict[str, ScopedEvent]) -> None:
         """Drop revoked or expired facts before their text can leave the host."""
         for key, pending in list(self.pending.items()):
             if events.get(key) != pending.event:
-                del self.pending[key]
+                self.discard(key)
                 self.invalidated += 1
             elif self.expires_at(pending) <= now:
-                del self.pending[key]
+                self.discard(key)
                 self.expired += 1
 
-    def take(
-        self, now: float, *, active: bool, context: tuple[ScopedEvent, ...]
-    ) -> Snapshot | None:
+    def take(self, now: float, *, context: tuple[ScopedEvent, ...]) -> Snapshot | None:
         if self.in_flight is not None or not self.pending:
             return None
         for key, pending in list(self.pending.items()):
             if self.expires_at(pending) <= now:
-                del self.pending[key]
+                self.discard(key)
                 self.expired += 1
-        if not self.pending:
+        if not self.pending or now < self.last_call + 12:
             return None
-        debounce, interval, wait = (2, 8, 15) if active else (3, 12, 20)
-        if now < self.last_call + interval:
-            return None
-        # A freshly edited head must not hold up a ready focus in another unit.
         ready = [
             (key, pending)
             for key, pending in self.pending.items()
-            if now >= min(pending.last_dirty + debounce, pending.first_dirty + wait)
+            if now >= min(pending.last_dirty + 3, pending.first_dirty + 20)
         ]
         if not ready:
             return None
-        # Host priority only chooses which real focus Jev sees first; it never
-        # classifies that focus or grants a reply. Preserve older invitations,
-        # while ordinary sparse sampling follows the newest conversation turn.
+        # Independent invitations remain distinct; only already matched ordinary
+        # continuation is replaced. Context inclusion is not evaluating each source.
         priority = next((item for item in ready if item[1].event.observation_priority), None)
         key, pending = priority or max(ready, key=lambda item: item[1].event.at)
-        del self.pending[key]
-        unit = (pending.event.thread, pending.event.target)
-        for sibling, item in list(self.pending.items()):
-            if (item.event.thread, item.event.target) == unit:
-                self.pending.move_to_end(sibling)
+        self.discard(key)
+        self._in_flight_pending = pending
         self.sequence += 1
-        context = tuple(
-            sorted(
-                (
-                    e
-                    for e in context
-                    if e.scope == self.scope
-                    and e.ref != pending.event.ref
-                    and e.at <= pending.event.at
-                ),
-                key=lambda e: (e.at, e.ref.event_id),
-            )
+        preceding = sorted(
+            (
+                e
+                for e in context
+                if e.scope == self.scope
+                and e.ref != pending.event.ref
+                and e.at <= pending.event.at
+                and not (
+                    e.at == pending.event.at
+                    and e.source_order is not None
+                    and pending.event.source_order is not None
+                    and e.source_order > pending.event.source_order
+                )
+            ),
+            key=lambda e: e.at,
         )
+        ordered = []
+        for _, same_time in groupby(preceding, key=lambda e: e.at):
+            sources = list(same_time)
+            if all(e.source_order is not None for e in sources):
+                sources.sort(key=lambda e: e.source_order or 0)
+            ordered.extend(sources)
+        context = tuple(ordered)
         self.in_flight = Snapshot(
             scope=self.scope,
             focus=pending.event,
@@ -137,29 +172,43 @@ class ObservationQueue:
         self.last_call = now
         return self.in_flight
 
+    def retry(self) -> None:
+        """Retry the paid focus only if it has not been superseded by newer material."""
+        pending = self._in_flight_pending
+        if pending is None:
+            return
+        if pending.unit is not None and pending.unit in self._unit_pending:
+            return
+        self.offer(pending.event, pending.kind, unit=pending.unit)
+        restored = self.pending.get(pending.event.ref.event_id)
+        if restored is not None and restored.event.ref == pending.event.ref:
+            restored.first_dirty = min(restored.first_dirty, pending.first_dirty)
+
     def finish(self, sequence: int) -> None:
         if self.in_flight and self.in_flight.sequence == sequence:
             self.in_flight = None
+            self._in_flight_pending = None
+
+    @staticmethod
+    def _pending_record(item: Pending) -> dict[str, object]:
+        return {
+            "ref": item.event.ref.model_dump(mode="json"),
+            "kind": item.kind.value,
+            "first_dirty": item.first_dirty,
+            "last_dirty": item.last_dirty,
+            "unit": item.unit.model_dump(mode="json") if item.unit else None,
+        }
 
     def checkpoint(self) -> dict[str, object]:
         return {
-            "pending": [
-                {
-                    "ref": item.event.ref.model_dump(mode="json"),
-                    "kind": item.kind.value,
-                    "first_dirty": item.first_dirty,
-                    "last_dirty": item.last_dirty,
-                }
-                for item in self.pending.values()
-            ],
+            "pending": [self._pending_record(item) for item in self.pending.values()],
             "last_call": self.last_call if self.last_call != float("-inf") else None,
             "sequence": self.sequence,
             "in_flight": {
-                "ref": self.in_flight.focus.ref.model_dump(mode="json"),
-                "kind": self.in_flight.kind.value,
+                **self._pending_record(self._in_flight_pending),
                 "sequence": self.in_flight.sequence,
             }
-            if self.in_flight
+            if self.in_flight and self._in_flight_pending
             else None,
             "dropped": self.dropped,
             "expired": self.expired,
@@ -167,39 +216,45 @@ class ObservationQueue:
         }
 
     def restore(
-        self, checkpoint: dict[str, Any], *, now: float, events: dict[str, ScopedEvent]
+        self,
+        checkpoint: dict[str, Any],
+        *,
+        now: float,
+        events: dict[str, ScopedEvent],
+        unit_for: Callable[[ScopedEvent], ParticipationUnit | None] = lambda event: None,
     ) -> None:
         self.sequence = int(checkpoint.get("sequence", 0))
         last_call = checkpoint.get("last_call")
         self.last_call = float(last_call) if last_call is not None else float("-inf")
         for name in ("dropped", "expired", "invalidated"):
             setattr(self, name, int(checkpoint.get(name, 0)))
-        for item in checkpoint.get("pending", []):
+        pending = list(checkpoint.get("pending", []))
+        if checkpoint.get("in_flight"):
+            inflight = checkpoint["in_flight"]
+            self.sequence = max(self.sequence, int(inflight["sequence"]))
+            pending.append(inflight)
+        for item in pending:
             if item["kind"] != CandidateKind.CONVERSATION:
                 continue
             event = events.get(item["ref"]["event_id"])
             if event is None or event.ref.model_dump() != item["ref"]:
                 self.invalidated += 1
                 continue
-            self.offer(event, CandidateKind(item["kind"]))
+            unit = (
+                ParticipationUnit.model_validate(item["unit"])
+                if item.get("unit")
+                else unit_for(event)
+            )
+            previous_key = self._unit_pending.get(unit) if unit else None
+            previous = self.pending.get(previous_key) if previous_key else None
+            self.offer(event, CandidateKind(item["kind"]), unit=unit)
             restored = self.pending.get(event.ref.event_id)
             if restored:
-                restored.first_dirty = float(item["first_dirty"])
-                restored.last_dirty = float(item["last_dirty"])
-        if checkpoint.get("in_flight"):
-            inflight = checkpoint["in_flight"]
-            self.sequence = max(self.sequence, int(inflight["sequence"]))
-            # Scoring has no execution side effect. Re-evaluate only still-permitted,
-            # fresh material, with a new request sequence and the original interval.
-            event = events.get(inflight["ref"]["event_id"])
-            if (
-                inflight["kind"] == CandidateKind.CONVERSATION
-                and event is not None
-                and event.ref.model_dump() == inflight["ref"]
-            ):
-                self.offer(event, CandidateKind(inflight["kind"]))
-            else:
-                self.invalidated += 1
+                restored.first_dirty = min(
+                    float(item.get("first_dirty", event.at)),
+                    previous.first_dirty if previous else event.at,
+                )
+                restored.last_dirty = float(item.get("last_dirty", event.at))
         self.discard_unavailable(now, events)
 
 

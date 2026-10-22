@@ -45,12 +45,14 @@ class JevObserver:
         self, snapshot: Snapshot, *, actor_identity: ActorIdentity = original_actor
     ) -> bytes:
         state = self._semantic_state(snapshot, actor_identity=actor_identity)
-        state["agent_identity"] = dict(self._identity())
+        identity = dict(self._identity())
+        state["agent_identity"] = identity
         return json.dumps(
             {
                 "model": self.model,
                 "state": state,
                 "questions": questions(
+                    name=str(identity["display_name"]),
                     unit_options=snapshot.focus.unit_options
                     if snapshot.focus.unit_ambiguous
                     else (),

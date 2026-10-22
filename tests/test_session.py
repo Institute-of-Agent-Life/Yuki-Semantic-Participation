@@ -24,10 +24,10 @@ async def test_single_inflight_and_new_input_is_coalesced():
 
     session = ObservationSession(controller(), Delayed())
     queue_observation(session, event())
-    task = asyncio.create_task(session.evaluate_due(130, active=False))
+    task = asyncio.create_task(session.evaluate_due(130))
     await started.wait()
     queue_observation(session, event("later", at=131))
-    assert not await session.evaluate_due(200, active=False)
+    assert not await session.evaluate_due(200)
     release.set()
     assert await task
     assert len(session.queue.pending) == 1
@@ -41,10 +41,10 @@ async def test_real_failures_backoff_and_keep_pending_material():
 
     session = ObservationSession(controller(), Unavailable())
     queue_observation(session, event())
-    assert not await session.evaluate_due(130, active=False)
+    assert not await session.evaluate_due(130)
     assert session.queue.pending
     assert session.health.failures == 1
-    assert not await session.evaluate_due(131, active=False)
+    assert not await session.evaluate_due(131)
     assert session.health.failures == 1
 
 
@@ -58,7 +58,7 @@ async def test_unknown_result_is_success_without_a_candidate():
 
     session = ObservationSession(controller(), Unknown())
     queue_observation(session, event())
-    assert await session.evaluate_due(130, active=False)
+    assert await session.evaluate_due(130)
     assert not session.controller.state.candidates
     assert session.health.failures == 0
 
@@ -73,7 +73,7 @@ async def test_revoked_focus_is_never_sent_to_provider():
     source = event()
     queue_observation(session, source)
     session.controller.observe_source_change(source.ref)
-    assert not await session.evaluate_due(130, active=False)
+    assert not await session.evaluate_due(130)
     assert session.queue.invalidated == 1
     assert not session.queue.pending
 
@@ -87,7 +87,7 @@ async def test_pending_and_health_survive_store_restore(tmp_path):
     session = ObservationSession(controller(), Unavailable())
     source = event()
     queue_observation(session, source)
-    assert not await session.evaluate_due(108, active=True)
+    assert not await session.evaluate_due(108)
     store = SnapshotStore(tmp_path / "controller.sqlite3")
     store.save(session.controller.state, expected_revision=0)
     _, saved = store.load(source.scope)
@@ -96,9 +96,9 @@ async def test_pending_and_health_survive_store_restore(tmp_path):
     assert restored.queue.sequence == 1
     assert restored.health.failures == 1
     assert restored.retry_after == 138
-    assert not await restored.evaluate_due(137, active=True)
+    assert not await restored.evaluate_due(137)
     assert restored.health.failures == 1
-    assert not await restored.evaluate_due(138, active=True)
+    assert not await restored.evaluate_due(138)
     assert restored.health.failures == 2
     store.close()
 
@@ -121,7 +121,7 @@ async def test_interrupted_scoring_requeues_only_fresh_original_source(tmp_path)
     session = ObservationSession(controller(), Delayed())
     source = event()
     queue_observation(session, source)
-    task = asyncio.create_task(session.evaluate_due(108, active=True))
+    task = asyncio.create_task(session.evaluate_due(108))
     await started.wait()
     store = SnapshotStore(tmp_path / "controller.sqlite3")
     store.save(session.controller.state, expected_revision=0)
@@ -134,11 +134,11 @@ async def test_interrupted_scoring_requeues_only_fresh_original_source(tmp_path)
     assert restored.queue.sequence == 1
     assert list(restored.queue.pending) == [source.ref.event_id]
     release.set()
-    assert await restored.evaluate_due(138, active=True)
+    assert await restored.evaluate_due(138)
     assert restored.controller.state.observations[source.ref.event_id].snapshot.sequence == 2
     expired = ObservationSession(Controller.restore(saved, 190), Delayed())
     assert not expired.queue.pending
-    assert not await expired.evaluate_due(190, active=True)
+    assert not await expired.evaluate_due(190)
     store.close()
 
 
@@ -171,7 +171,7 @@ async def test_required_and_optional_dimension_failures_differ(missing, failures
 
     session = ObservationSession(controller(), Partial())
     queue_observation(session, event())
-    await session.evaluate_due(108, active=True)
+    await session.evaluate_due(108)
     assert session.health.failures == failures
     assert bool(session.queue.pending) == bool(failures)
 
@@ -191,7 +191,7 @@ async def test_large_source_uses_real_provider_failure_and_health():
         session = ObservationSession(controller(), observer)
         oversized = event().model_copy(update={"text": "文" * 6000})
         queue_observation(session, oversized)
-        assert not await session.evaluate_due(108, active=True)
+        assert not await session.evaluate_due(108)
         assert session.queue.pending
         assert session.health.failures == 1
         assert len(calls) == 1
@@ -199,7 +199,7 @@ async def test_large_source_uses_real_provider_failure_and_health():
         restored = ObservationSession(Controller.restore(session.controller.state, 110), observer)
         assert restored.queue.pending
         assert restored.health.failures == 1
-        assert not await restored.evaluate_due(110, active=True)
+        assert not await restored.evaluate_due(110)
         assert len(calls) == 1
 
 
@@ -213,7 +213,7 @@ async def test_observer_cannot_replace_the_submitted_snapshot():
 
     session = ObservationSession(controller(), WrongPreparation())
     queue_observation(session, event())
-    assert not await session.evaluate_due(108, active=True)
+    assert not await session.evaluate_due(108)
     assert session.health.failures == 1
     assert session.queue.pending
 
@@ -235,16 +235,16 @@ async def test_provider_health_survives_expiry_and_restart_until_real_unknown():
     for at in (108, 138, 198):
         if at == 198:
             queue_observation(session, event("fresh-before-third-failure", at=180))
-        assert not await session.evaluate_due(at, active=True)
+        assert not await session.evaluate_due(at)
     assert session.health.degraded
-    assert not await session.evaluate_due(800, active=False)
+    assert not await session.evaluate_due(800)
     assert not session.queue.pending
     assert session.health.degraded
     session.checkpoint()
     restored = ObservationSession(Controller.restore(session.controller.state, 801), Unknown())
     assert restored.health.degraded
     queue_observation(restored, event("fresh-after-outage", at=802))
-    assert await restored.evaluate_due(840, active=False)
+    assert await restored.evaluate_due(840)
     assert not restored.health.degraded
     assert not restored.controller.state.candidates
 
@@ -289,7 +289,7 @@ async def test_http_failure_retries_fresh_input_and_success_recovers(status):
 
     session = ObservationSession(controller(), Recovering())
     queue_observation(session, event())
-    assert not await session.evaluate_due(108, active=True)
+    assert not await session.evaluate_due(108)
     delay = 300 if status in {401, 403} else 30
     assert session.retry_after == 108 + delay
     assert session.last_failure["status"] == status
@@ -299,8 +299,8 @@ async def test_http_failure_retries_fresh_input_and_success_recovers(status):
     )
     fresh_at = 108 + delay - 5
     queue_observation(restored, event("fresh", at=fresh_at))
-    assert not await restored.evaluate_due(108 + delay - 1, active=True)
-    assert await restored.evaluate_due(108 + delay, active=True)
+    assert not await restored.evaluate_due(108 + delay - 1)
+    assert await restored.evaluate_due(108 + delay)
     assert len(calls) == 2
     assert calls[-1].event_id == "fresh"
     assert restored.health.failures == 0 and not restored.health.degraded
@@ -324,15 +324,15 @@ async def test_422_rejects_only_original_request_and_does_not_poison_next_source
 
     session = ObservationSession(controller(), RejectFirst())
     queue_observation(session, event())
-    assert not await session.evaluate_due(108, active=True)
+    assert not await session.evaluate_due(108)
     assert session.last_error == "request_validation"
     assert session.last_failure["source"] == event().ref.model_dump(mode="json")
     assert session.health.failures == 0 and not session.queue.pending
     queue_observation(session, event())
-    assert not await session.evaluate_due(116, active=True)
+    assert not await session.evaluate_due(116)
     assert len(calls) == 1
     queue_observation(session, event("valid-next", at=117))
-    assert await session.evaluate_due(120, active=True)
+    assert await session.evaluate_due(120)
     assert calls[-1].event_id == "valid-next"
 
 
@@ -351,8 +351,8 @@ async def test_old_configuration_invalid_checkpoint_can_retry_without_resetting_
     checkpoint["retry_after"] = 138
     restored = ObservationSession(Controller.restore(session.controller.state, 109), Unknown())
     assert "configuration_valid" not in restored.controller.state.observer_checkpoint["health"]
-    assert not await restored.evaluate_due(137, active=True)
-    assert await restored.evaluate_due(138, active=True)
+    assert not await restored.evaluate_due(137)
+    assert await restored.evaluate_due(138)
     assert not restored.health.degraded and restored.health.failures == 0
 
 

@@ -38,7 +38,6 @@ class AutonomyParameters(BaseModel):
     source_social_weight: float = Field(default=2.0, ge=0, le=20)
     source_opening_seconds: float = Field(default=4, gt=0, le=86400)
     source_opening_floor: float = Field(default=0.1, ge=0, le=1)
-    continuation_review_span: int = Field(default=4, ge=1)
 
     activity_decay_seconds: float = Field(default=60, gt=0, le=604800)
     activity_increment: float = Field(default=0.1, ge=0, le=1)
@@ -71,6 +70,7 @@ class AutonomyParameters(BaseModel):
                     "independent_source_factor",
                     "recall_source_decay_seconds",
                     "contact_source_decay_seconds",
+                    "continuation_review_span",
                 }
             }
         return value

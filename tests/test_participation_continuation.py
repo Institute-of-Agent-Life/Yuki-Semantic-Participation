@@ -9,7 +9,6 @@ from pathlib import Path
 import pytest
 
 from tests.test_controller import SCOPE, event, observation
-from yuki_participation.autonomy_parameters import AutonomyParameters
 from yuki_participation.controller import Controller
 from yuki_participation.models import Choice, Effect, Feedback, HostUnitOption, Scope, SourceRef
 from yuki_participation.participation import CHECKPOINT_KEY, ParticipationUnit, UnitBinding
@@ -476,7 +475,6 @@ def test_new_admitted_input_and_hydration_replay_do_not_reset_local_quiet():
 
 def test_fifty_continuations_keep_establishment_binding_and_each_actual_effect_basis(tmp_path):
     c, original, origin = admitted()
-    c.set_parameters(AutonomyParameters(continuation_review_span=64))
     assert c.observe_unit_hint(origin, report("stay"))
     bindings = {}
     for index in range(1, 51):

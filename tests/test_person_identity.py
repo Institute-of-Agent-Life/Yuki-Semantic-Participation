@@ -106,35 +106,25 @@ def populated():
     return c, a, ua, b, ub
 
 
-def test_merge_counts_original_sources_once_and_preserves_unknown_progress():
+def test_merge_keeps_original_admissions_without_an_implicit_review_quota():
     c, a, ua, _b, _ub = populated()
     focus = source(c, 20, "C", 120)
-    assert c.participating_units(120, actor_identity=root)[0].unconfirmed_inputs == 5
-    assert c.participation_view(focus, 120, actor_identity=root).matched_unit is None
+    assert c.participation_view(focus, 120, actor_identity=root).matched_unit is not None
     original = c.state.model_dump_json()
     for number in range(2, 5):
         assert c.observe_unit_input(ua, c.state.events[f"event:{number}"].ref, continuation=True)
     assert c.observe_unit_input(ua, a.ref)
     assert c.state.model_dump_json() == original
-    checkpoint = c._read_participation_checkpoint()
-    key = c._unit_key("topic", "A")
-    checkpoint.units[key] = checkpoint.units[key].model_copy(update={"fast_inputs": None})
-    c._save_participation(checkpoint)
-    assert c.participating_units(120, actor_identity=root)[0].unconfirmed_inputs is None
-    assert c.participation_view(focus, 120, actor_identity=root).matched_unit is None
 
 
-def test_paid_review_keeps_each_original_watermark_and_not_later_inputs():
+def test_paid_review_keeps_each_original_actor_and_source_without_rewriting_later_inputs():
     c, _a, ua, _b, ub = populated()
     focus = source(c, 20, "C", 120)
     snapshot = c.freeze_observation(
         Snapshot(scope=SCOPE, focus=focus, context=(), sequence=1, issued_at=120),
         actor_identity=root,
     )
-    assert {(item.actor, item.fast_sequence) for item in snapshot.unit_reviews} == {
-        ("A", 3),
-        ("B", 2),
-    }
+    assert {item.actor for item in snapshot.unit_reviews} == {"A", "B"}
     before = snapshot.model_dump_json()
     for number, actor, unit in ((21, "A", ua), (22, "B", ub)):
         event = source(c, number, actor, 121)
@@ -144,8 +134,8 @@ def test_paid_review_keeps_each_original_watermark_and_not_later_inputs():
     )
     assert c.apply_semantic_observation(actual, actor_identity=root)
     assert snapshot.model_dump_json() == before
-    assert c.participating_units(122, actor_identity=root)[0].unconfirmed_inputs == 2
-    assert {unit.review.covered_fast_sequence for unit in units(c).values()} == {2, 3}
+    assert {unit.review.source for unit in units(c).values()} == {focus.ref}
+    assert c.participation_view(c.state.events["event:22"], 122, actor_identity=root).matched_unit
     assert {unit.binding.actor for unit in units(c).values()} == {"A", "B"}
     assert not c.apply_semantic_observation(actual, actor_identity=root)
 
@@ -162,10 +152,7 @@ def test_merge_negative_review_closes_same_discussion_without_reobserving_old_fo
     )
     assert c.apply_semantic_observation(actual, actor_identity=root)
     newer = source(c, 21, "C", 121)
-    assert (
-        c.participation_view(newer, 121, actor_identity=root, check_budget=False).matched_unit
-        is None
-    )
+    assert c.participation_view(newer, 121, actor_identity=root).matched_unit is None
     assert set(c.state.observations) == {focus.ref.event_id}
     assert units(c)[c._unit_key("topic", "A")].binding == ua
     assert units(c)[c._unit_key("topic", "B")].binding == ub
@@ -180,7 +167,7 @@ def test_flattened_a_b_c_identity_cold_restore_keeps_checkpoint_and_admissions()
     assert restored.state.consumed == c.state.consumed
     before = restored.state.model_dump_json()
     current = restored.participating_units(120, actor_identity=root)
-    assert len(current) == 1 and current[0].unconfirmed_inputs == 5
+    assert len(current) == 1 and current[0].engage == "stay"
     assert restored.state.model_dump_json() == before
     separate = Controller(SCOPE.model_copy(update={"generation": 2}), 120)
     assert not separate.participating_units(120, actor_identity=root)

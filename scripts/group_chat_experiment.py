@@ -380,7 +380,7 @@ async def replay_scene(
     now = start - 1
 
     async def tick(at: float) -> None:
-        await session.evaluate_due(at, active=bool(controller.state.candidates))
+        await session.evaluate_due(at)
         proposal = controller.advance(
             at,
             controller_epoch=0,
