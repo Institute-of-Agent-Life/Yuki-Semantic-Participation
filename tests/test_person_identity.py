@@ -186,3 +186,53 @@ def test_new_jev_projection_uses_current_person_without_rewriting_snapshot():
     assert {unit["target"] for unit in state["yuki_participation"]["units"]} == {"C"}
     assert snapshot.model_dump_json() == original
     assert snapshot.focus.author == "B" and snapshot.context[0].author == "A"
+
+
+def test_merged_person_invitation_releases_original_target_stop_and_restores_fast_continuation():
+    c = Controller(SCOPE, 100)
+    original, _ = start(c, 1, "A", 100)
+    stop = source(c, 2, "A", 101)
+    assert c.apply_semantic_observation(observation(stop, act="ask_yuki_stop"), actor_identity=root)
+    invite = source(c, 3, "B", 102)
+    assert c.apply_semantic_observation(observation(invite), actor_identity=root)
+    assert c.participation_view(invite, 102, actor_identity=root).addressed
+    unit = binding(invite)
+    assert c.observe_unit_input(unit, invite.ref)
+    assert hint(c, unit, invite, "stay")
+    later = source(c, 4, "B", 103)
+    matched = c.participation_view(later, 103, actor_identity=root).matched_unit
+    assert matched is not None and not matched.closed
+    boundary = c.state.boundaries[stop.ref.event_id]
+    assert boundary.target == "A" and boundary.released_by == invite.ref
+    assert boundary.source == stop.ref
+    assert c.state.events[original.ref.event_id].author == "A"
+    assert c.state.events[invite.ref.event_id].author == "B"
+
+
+def test_merged_person_stop_closes_current_unit_even_without_original_actor_unit():
+    c = Controller(SCOPE, 100)
+    start(c, 1, "B", 100)
+    stop = source(c, 2, "A", 101)
+    assert c.apply_semantic_observation(observation(stop, act="ask_yuki_stop"), actor_identity=root)
+    later = source(c, 3, "B", 102)
+    assert c.participating_units(102, actor_identity=root)[0].closed
+    assert c.participation_view(later, 102, actor_identity=root).matched_unit is None
+    # A different person's current identity is not affected by this local boundary.
+    start(c, 4, "D", 103)
+    unrelated = source(c, 5, "D", 104)
+    assert c.participation_view(unrelated, 104, actor_identity=root).matched_unit is not None
+
+
+def test_withdrawn_merged_person_invitation_preserves_another_original_valid_reopening():
+    c = Controller(SCOPE, 100)
+    start(c, 1, "A", 100)
+    stop = source(c, 2, "A", 101)
+    assert c.apply_semantic_observation(observation(stop, act="ask_yuki_stop"), actor_identity=root)
+    first = source(c, 3, "B", 102)
+    second = source(c, 4, "C", 103)
+    for invitation in (first, second):
+        assert c.apply_semantic_observation(observation(invitation), actor_identity=root)
+    assert c.state.boundaries[stop.ref.event_id].released_by == second.ref
+    c.observe_source_change(second.ref, actor_identity=root)
+    assert c.state.boundaries[stop.ref.event_id].released_by == first.ref
+    assert not c.participating_units(104, actor_identity=root)[0].closed

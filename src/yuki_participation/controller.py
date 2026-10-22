@@ -410,7 +410,9 @@ class Controller:
         self._prune()
         return True
 
-    def observe_source_change(self, invalid: SourceRef) -> None:
+    def observe_source_change(
+        self, invalid: SourceRef, *, actor_identity: ActorIdentity = original_actor
+    ) -> None:
         key = invalid.event_id
         if key not in self.state.seen and len(self.state.seen) >= 1024:
             raise ValueError("source_tombstone_capacity")
@@ -482,7 +484,7 @@ class Controller:
                 )
             ):
                 del self.state.candidates[candidate_id]
-        self._refresh_releases()
+        self._refresh_releases(actor_identity=actor_identity)
 
         self._prune_participation()
 
@@ -648,7 +650,7 @@ class Controller:
                 author=event.author,
                 explicit_stop=act.p("ask_yuki_stop") >= 0.5,
             )
-        self._refresh_releases()
+        self._refresh_releases(actor_identity=actor_identity)
         if self.state.consumed.get(key, 0) >= event.ref.revision:
             return True
         if not (_dimension_known(act) and _dimension_known(floor)):
@@ -797,11 +799,11 @@ class Controller:
             else set()
         )
 
-    def _unit_closed(self, unit: ParticipationUnit) -> bool:
+    def _unit_closed(self, unit: ParticipationUnit, actor_identity: ActorIdentity) -> bool:
         return any(
             b.released_by is None
             and b.thread == unit.thread
-            and (b.target == unit.target or b.group_wide)
+            and (actor_identity(b.target) == actor_identity(unit.target) or b.group_wide)
             for b in self.state.boundaries.values()
         )
 
@@ -1284,7 +1286,9 @@ class Controller:
                     anchors=anchors,
                 )
         closed_units = {
-            (b.thread, b.target) for b in self.state.boundaries.values() if b.released_by is None
+            (b.thread, actor_identity(b.target))
+            for b in self.state.boundaries.values()
+            if b.released_by is None
         }
         closed_threads = {
             b.thread
@@ -1300,7 +1304,8 @@ class Controller:
                 if v.hint and all(self._unit_ref_valid(r, v) for r in v.hint_basis)
                 else None,
                 expressed=self._unit_key(v.binding.unit.thread, v.binding.unit.target) in expressed,
-                closed=(v.binding.unit.thread, v.binding.unit.target) in closed_units
+                closed=(v.binding.unit.thread, actor_identity(v.binding.unit.target))
+                in closed_units
                 or v.binding.unit.thread in closed_threads,
                 semantic_continuation=self._semantic_continuation(v, actor_identity=actor_identity),
             )
@@ -1381,14 +1386,17 @@ class Controller:
                     scope=self.state.scope, unit=unit, actor=event.author, basis=(event.ref,)
                 ),
                 last_at=event.at,
-                closed=self._unit_closed(unit),
+                closed=self._unit_closed(unit, actor_identity),
             )
         candidate = self.state.candidates.get(event.ref.event_id)
         addressed = bool(
             candidate
             and candidate.support.kind == "observed"
             and self._addressed(candidate)
-            and any(candidate in members for members in self._eligible_groups(now).values())
+            and any(
+                candidate in members
+                for members in self._eligible_groups(now, actor_identity=actor_identity).values()
+            )
             and not self._invitation_superseded(candidate.event, checkpoint, actor_identity)
         )
         return ParticipationView(
@@ -1894,14 +1902,17 @@ class Controller:
             trace_baselines=traces,
         )
 
-    def _closed(self, event: ScopedEvent) -> bool:
+    def _closed(self, event: ScopedEvent, actor_identity: ActorIdentity = original_actor) -> bool:
         # Closing records persist independently of C decay; a newer source is not automatically
         # a reopening. Only a separately supported scoped invitation can release one.
         for boundary in self.state.boundaries.values():
             if (
                 boundary.released_by is None
                 and boundary.thread == event.thread
-                and (boundary.target == event.target or boundary.group_wide)
+                and (
+                    actor_identity(boundary.target) == actor_identity(event.target)
+                    or boundary.group_wide
+                )
             ):
                 return True
         return False
@@ -1945,7 +1956,7 @@ class Controller:
         )
         return all(not self._closed(choice) for choice in choices)
 
-    def _refresh_releases(self) -> None:
+    def _refresh_releases(self, *, actor_identity: ActorIdentity) -> None:
         """A late stop re-score must not undo a subsequent verified reopening."""
         for boundary_key, boundary in list(self.state.boundaries.items()):
             original = self.state.seen.get(boundary.source.event_id)
@@ -1964,7 +1975,10 @@ class Controller:
                     or event.unit_ambiguous
                     or not self._source_before(original.at, boundary.source, event.at, event.ref)
                     or event.thread != boundary.thread
-                    or (event.target != boundary.target and not boundary.group_wide)
+                    or (
+                        actor_identity(event.target) != actor_identity(boundary.target)
+                        and not boundary.group_wide
+                    )
                     or not _dimension_known(act)
                     or act.p("invite_yuki") < 0.8
                     or not _dimension_known(scope)
@@ -1989,6 +2003,7 @@ class Controller:
         *,
         include_addressed: bool = True,
         allowed_kinds: frozenset[CandidateKind] | None = None,
+        actor_identity: ActorIdentity = original_actor,
     ) -> dict[str, list[Candidate]]:
         groups: dict[tuple[CandidateKind, str, str], list[Candidate]] = {}
         for key, candidate in self.state.candidates.items():
@@ -2009,7 +2024,7 @@ class Controller:
                     != support.observation_id
                 )
                 or support.strength(now) == 0
-                or self._closed(candidate.event)
+                or self._closed(candidate.event, actor_identity)
                 or candidate.value.valid_until <= now
                 or candidate.floor.valid_until <= now
                 or self.state.consumed.get(key, 0) >= candidate.event.ref.revision

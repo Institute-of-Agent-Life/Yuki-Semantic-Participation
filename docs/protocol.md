@@ -140,6 +140,9 @@ Host 在尚未接纳的 promotion/selected 边界重新核 `continuation_current
 `participation_view.addressed` 同样排除被较新真实否定或 quiet 覆盖的旧邀请；
 真正较新的邀请仍可唤起。实际停止不是发言者的群管理权限：同讨论的真实新邀请可以释放原停止，
 不要求邀请者等于停止者，也不要求局部新邀请先自称整个群级邀请。
+同人的当前闭合读取、重新邀请与撤回后重新选择释放来源，沿本次 Host 的 actor_identity 比较目标；
+Boundary、原事件、报告和回执继续保原 Person ID。Host 在真实来源失效时同批准备身份，传入
+`observe_source_change(ref, actor_identity=identity)`，不为每条来源重复查身份或永久缓存映射。
 
 观察只合并已经唯一匹配同一单元、非优先级的普通续聊待办。独立邀请、未匹配或歧义焦点分别保留；
 上下文包含某条消息不表示它已独立评分。待办用同一份来源的单元索引平均 O(1) 替换，
