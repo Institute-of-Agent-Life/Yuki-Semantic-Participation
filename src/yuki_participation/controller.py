@@ -1030,7 +1030,13 @@ class Controller:
         )
         return sources[0] if len(sources) == 1 else None
 
-    def _prune_participation(self, checkpoint: ParticipationCheckpoint | None = None) -> None:
+    def _prune_participation(
+        self,
+        checkpoint: ParticipationCheckpoint | None = None,
+        *,
+        previous: ParticipationCheckpoint | None = None,
+        normalize: bool = False,
+    ) -> None:
         if checkpoint is None:
             checkpoint = self._read_participation_checkpoint()
         if checkpoint is None:
@@ -1056,14 +1062,16 @@ class Controller:
         if len(units) > 64:
             ordered = sorted(units, key=lambda k: (-units[k].last_at, k))
             units = {k: units[k] for k in ordered[:64]}
-        if CHECKPOINT_KEY in self.state.host_checkpoint:
-            self._save_participation(
-                checkpoint.model_copy(update={"units": units, "expressions": expressions})
-            )
+        updated = checkpoint.model_copy(update={"units": units, "expressions": expressions})
+        if CHECKPOINT_KEY in self.state.host_checkpoint and (
+            normalize or updated != (previous if previous is not None else checkpoint)
+        ):
+            self._save_participation(updated)
 
-    def _retire_participation(self, boundary: float) -> ParticipationCheckpoint:
+    def _retire_participation(
+        self, boundary: float, checkpoint: ParticipationCheckpoint | None
+    ) -> ParticipationCheckpoint:
         """Fold only already verified unit identities before dropping raw interpretation."""
-        checkpoint = self._read_participation_checkpoint()
         if checkpoint is None:
             return ParticipationCheckpoint()
         units = {}
@@ -1122,10 +1130,7 @@ class Controller:
             )
             units[key] = unit.model_copy(update={"anchors": anchors, "retired_refs": retired})
         ordered = sorted(units, key=lambda k: (-units[k].last_at, k))
-        checkpoint = checkpoint.model_copy(update={"units": {k: units[k] for k in ordered[:64]}})
-        if CHECKPOINT_KEY in self.state.host_checkpoint:
-            self._save_participation(checkpoint)
-        return checkpoint
+        return checkpoint.model_copy(update={"units": {k: units[k] for k in ordered[:64]}})
 
     def _make_participation_source_room(self) -> None:
         # Retire derived units under the existing fingerprint resource bound. Never
@@ -2387,12 +2392,15 @@ class Controller:
         old = self.state.effects.get(effect.effect_id)
         if old is not None:
             return old.run_ref == run_ref and old.effect == effect
+        if effect.kind == "message":
+            self._set(last_self_message_at=max(self.state.last_self_message_at or 0, effect.at))
+        # The replay boundary already retired these transient trace inputs.
+        # Real execution/delivery remains in the Host ledger; do not recreate it here.
+        if effect.at <= self.state.replay_after:
+            return False
         self.state.effects[effect.effect_id] = RecordedEffect(
             proposal_id=f"host:{run_ref}", run_ref=run_ref, effect=effect
         )
-        if effect.kind == "message":
-            self._set(last_self_message_at=max(self.state.last_self_message_at or 0, effect.at))
-        self._prune()
         return True
 
     def _willingness(self, now: float) -> float:
@@ -2632,7 +2640,7 @@ class Controller:
             self._set(pending=None)
         return True
 
-    def _prune(self) -> None:
+    def _prune(self, *, normalize_checkpoint: bool = False) -> None:
         cutoff = self.state.now - 600
         # Keep enough pulses for the largest active Work/exposure time constant.
         social_cutoff = self.state.now - max(
@@ -2704,7 +2712,8 @@ class Controller:
                 retained_bytes -= len(retained[offset].text.encode("utf-8"))
                 remaining -= 1
                 offset += 1
-        checkpoint = self._retire_participation(boundary)
+        original_checkpoint = self._read_participation_checkpoint()
+        checkpoint = self._retire_participation(boundary, original_checkpoint)
         participation_refs = {r.event_id for r in self._participation_refs(checkpoint)}
         expression_ids = self._unit_expression_ids(checkpoint)
         self._advance_replay_boundary(boundary, checkpoint)
@@ -2741,18 +2750,11 @@ class Controller:
                 record.run_ref == run and record.effect.at >= cutoff
                 for record in self.state.effects.values()
             )
-            if (
-                feedback.at < cutoff
-                and not recent_effect
-                and feedback.outcome
-                in {
-                    "completed",
-                    "interrupted",
-                    "no_reply",
-                    "busy",
-                    "rejected",
-                }
-            ):
+            if feedback.at < cutoff and not recent_effect:
+                # Accepted execution belongs to the Host, even if its final
+                # short-lived scheduling feedback never reached this controller.
+                if self.state.pending == feedback.proposal_id:
+                    self._set(pending=None)
                 self.state.feedback.pop(run)
                 self.state.proposals.pop(feedback.proposal_id, None)
                 self.state.proposal_runs.pop(feedback.proposal_id, None)
@@ -2785,7 +2787,10 @@ class Controller:
             # acceptance feedback already transferred ownership to the Host.
             if accepted:
                 self._set(pending=None)
-        self._prune_participation()
+        if original_checkpoint is not None:
+            self._prune_participation(
+                checkpoint, previous=original_checkpoint, normalize=normalize_checkpoint
+            )
 
     @classmethod
     def restore(
@@ -2818,5 +2823,7 @@ class Controller:
             )
             if last_speech is not None:
                 controller._set(last_self_message_at=last_speech)
-        controller._prune()
+        # Persist existing schema migrations once on load, even if retirement is
+        # unchanged. Steady-state pruning needs no identical serialization.
+        controller._prune(normalize_checkpoint=True)
         return controller
