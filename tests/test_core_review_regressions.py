@@ -347,9 +347,11 @@ def test_time_window_compaction_preserves_decay_and_does_not_replay_old_effects(
         assert c.belief("topic", "A", now) == pytest.approx(dynamics.decay(initial, now - 105))
         assert c.belief("topic", "A", now)[4] == 0
         assert not c.state.observations
-    if outcome == "accepted":
-        assert effect.effect_id in c.state.effects
-        assert c.state.feedback["run"].outcome == "accepted"
+    # Short-lived scheduling feedback retires even if its final notification
+    # never arrived. The folded belief remains; execution ownership is the Host's.
+    assert effect.effect_id not in c.state.effects
+    assert "run" not in c.state.feedback
+    assert proposal.proposal_id not in c.state.proposals
 
 
 def test_capacity_compaction_preserves_belief_with_one_monotonic_time_boundary():

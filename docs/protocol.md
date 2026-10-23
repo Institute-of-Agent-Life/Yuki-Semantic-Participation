@@ -90,6 +90,17 @@ Host canonical 入账、版本与授权
   → 原 run 的 Feedback → 保存 State
 ~~~
 
+`observe_committed_effect` 对已有 effect ID 仍核验原 run 与内容。未保留且时间不晚于
+现有 `replay_after` 的效果不再插入短期调度状态，也不触发全局裁剪，返回 False；
+迟到真实 message 仍以 max 推进 last_self_message。过时刹车不要求从历史逐条恢复；
+这不删除或改写 Host 中的原执行、预算、真实发送与其他领域回执，也不清空参与关系依据。
+新鲜 effect 沿原身份入账，不逐条执行全局裁剪；原 advance 统一维护资源窗口。
+反馈超过原窗口且没有近期效果时退休，包括未收到终态的 accepted；旧 pending 若已引用
+该接纳则一并让出。没有接纳证据的 pending 仍按原 Host 查询合同处理，实际 Work 由 Host 持有。
+一次裁剪只解析一次当前 participation checkpoint，退休折叠和最终清理共用该 typed 值；
+正常回放只有内容变化才序列化写回；restore 仍一次写回已有 schema 迁移，未知 namespace 原样保留。
+原快照容量、详细事实窗口和关系退休规则不变。
+
 Proposal 是机会，不是发送命令或工具许可。Host 仍核验来源、停止、Space/Presence、
 scope/generation、owner/epoch 与真实权限，原 Work 容量沿原调度处理。
 慢观察不占全局接纳锁，写事务不等待模型/网关或扫描历史。
