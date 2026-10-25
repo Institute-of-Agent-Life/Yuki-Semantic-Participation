@@ -232,9 +232,7 @@ def test_old_reader_fold_and_unrelated_stop_seen_do_not_resurrect_unknown_unit(
         for value in legacy_units.values():
             value.pop("retired_refs", None)
         c.state.host_checkpoint[CHECKPOINT_KEY]["units"] = legacy_units
-    store = SnapshotStore(tmp_path / "state.sqlite3")
-    save_historical_wire(store, c.state)
-    store.close()
+    save_historical_wire(tmp_path / "state.sqlite3", c.state)
     paths = subprocess.check_output(
         ["git", "ls-tree", "-r", "--name-only", revision, "src/yuki_participation"], text=True
     ).splitlines()

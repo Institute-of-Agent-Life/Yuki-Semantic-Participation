@@ -1,7 +1,28 @@
 # 语义参与实施状态
 
-2026-10-23。本文描述当前开发修订；确切依赖以 Host pin、lock 和实际安装一致的修订为准。
+2026-10-26。本文描述当前开发修订；确切依赖以 Host pin、lock 和实际安装一致的修订为准。
 双仓库 CI、PR、合并、镜像、部署和自然流量验收分别记录；当前正文不预填尚未发生的发布结果。
+
+2026-10-26：原数学逐 tick、sample_sequence、哈希流及参数恢复规则保留；同次评分共享
+eligible groups/pressure，feedback prune 先一次归集近期 run，删除逐反馈重扫 effects。
+queue 与 observer checkpoint 只有真实变化才重建，maintain/ready/next_due 分离本地清理和请求准备。
+
+SnapshotStore 将同一 State 物理拆为 snapshot_head 与 snapshot_body，单 owner、单 revision CAS。
+热区是原数值与游标，last_action 也在热区；原 dict 顺序或成员变化写冷体。原 1/16 MiB 逻辑容量
+由完整编码长度减 typed 热长度的 K 保留。Host 持有原保存锁后冻结 bytes，Store 不再进行完整
+State 的解析/再编码。一次 key LEFT JOIN 区分不存在与半对损坏，不补造空状态。
+旧 snapshots 升级按固定旧 schema 在事务外准备，单事务切换，不进行 restore/advance/prune；
+原 revision、抽样序号、已接纳 proposal/run/receipt 和未知 Host 扩展保持。
+
+`tests/test_progress_equivalence.py` 从 git pin 79d266 载入真实旧实现，对照相同 UUID、输入、
+逐 tick、参数热更及冷恢复，逐步比较全部 38 字段及冷热往返。存储回归另覆盖 typed 数值 token、
+容量、布局顺序、半对、CAS、迁移与中断回滚。没有付费请求或线上数据。
+
+[本地合成开销](research/narrow-snapshot-cost-20261026.json)使用原 Host 的完整编码→adapter
+解析 State→Store 再编码路径，对照新 freeze→Store bytes；两边都运行真实 advance，均不计
+executor 调度。每次 8 scope、每 scope 60 KB 不变扩展、80 tick，分别测 0 与 64 个真实保留
+belief baseline，保存原始时长、编码量和 WAL。关闭 WAL 自动 checkpoint 以比较写量。
+这是本机单次合成样本，不能换算成生产总 CPU 或聊天延迟改善倍数。
 
 2026-10-23：非语义效果若已越过现有 `replay_after` 退休边界，不再重新插入短期调度状态
 并触发全局整理；已有 effect ID 仍核对原身份，迟到真实 message 仅推进 last_self_message。

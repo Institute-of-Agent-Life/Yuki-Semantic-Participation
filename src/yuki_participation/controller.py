@@ -6,7 +6,7 @@ import hashlib
 import json
 import math
 from collections.abc import Callable
-from typing import Literal, TypeGuard
+from typing import Any, Literal, TypeGuard
 from uuid import uuid4
 
 from pydantic import Field, model_validator
@@ -46,6 +46,23 @@ from .participation import (
 )
 from .rubric import CRITERIA, REVISION
 from .self_report import SelfReport
+
+HOT_FIELDS = frozenset(
+    {
+        "now",
+        "last_sample_at",
+        "sample_sequence",
+        "skipped_seconds",
+        "replay_after",
+        "baseline_evictions",
+        "baseline_invalidations",
+        "belief_baselines",
+        "trace_baselines",
+        "attentions",
+        "reception_baseline",
+    }
+)
+
 
 ActorIdentity = Callable[[str], str]
 
@@ -329,6 +346,28 @@ class State(Record):
         return migrated
 
 
+def _same_fact(left: object, right: object) -> bool:
+    """Compare ordered facts without encoding retained bodies or losing signed zero."""
+    if left is right:
+        return True
+    if type(left) is not type(right):
+        return False
+    if isinstance(left, Record) and isinstance(right, Record):
+        return _same_fact(left.__dict__, right.__dict__)
+    if isinstance(left, dict) and isinstance(right, dict):
+        return len(left) == len(right) and all(
+            key == other and _same_fact(value, right_value)
+            for (key, value), (other, right_value) in zip(left.items(), right.items(), strict=True)
+        )
+    if isinstance(left, (tuple, list)) and isinstance(right, (tuple, list)):
+        return len(left) == len(right) and all(
+            _same_fact(value, other) for value, other in zip(left, right, strict=True)
+        )
+    if isinstance(left, float) and isinstance(right, float) and left == right == 0:
+        return math.copysign(1, left) == math.copysign(1, right)
+    return left == right
+
+
 class Controller:
     """Semantic opportunities with a single Host-owned admission boundary."""
 
@@ -340,13 +379,50 @@ class Controller:
     ) -> None:
         self.state = State(scope=scope, now=now, last_sample_at=now)
         self.parameters = parameters
+        self.body_changed = True
+        self.progress_changed = True
 
     def set_parameters(self, parameters: AutonomyParameters) -> None:
         """Apply a validated profile to future sampling without changing persisted receipts."""
         self.parameters = parameters
 
     def _set(self, **updates: object) -> None:
+        for name, value in updates.items():
+            old = getattr(self.state, name)
+            changed = not _same_fact(old, value)
+            if changed:
+                if name in HOT_FIELDS:
+                    self.progress_changed = True
+                else:
+                    self.body_changed = True
         self.state = self.state.model_copy(update=updates)
+
+    def _put(self, name: str, key: str, value: Any) -> None:
+        mapping = getattr(self.state, name)
+        if key not in mapping or not _same_fact(mapping[key], value):
+            if name == "attentions":
+                self.progress_changed = True
+            if name != "attentions" or key not in mapping:
+                self.body_changed = True
+        mapping[key] = value
+
+    def _pop(self, name: str, key: str, *default: Any) -> Any:
+        mapping = getattr(self.state, name)
+        if key in mapping:
+            self.body_changed = True
+        return mapping.pop(key, *default)
+
+    def set_state_entry(self, name: str, key: str, value: Any) -> None:
+        """Apply a Host-owned fact at the original state mutation boundary."""
+        self._put(name, key, value)
+
+    def remove_state_entry(self, name: str, key: str) -> None:
+        self._pop(name, key, None)
+
+    def take_changes(self) -> tuple[bool, bool]:
+        changes = self.progress_changed, self.body_changed
+        self.progress_changed = self.body_changed = False
+        return changes
 
     def _resolved_event(self, event: ScopedEvent) -> ScopedEvent:
         observation = self.state.observations.get(event.ref.event_id)
@@ -385,8 +461,10 @@ class Controller:
             ):
                 # A Host reread can supply the original local order of an old
                 # source. Keep paid events and snapshots byte-for-byte stable.
-                self.state.seen[event.ref.event_id] = seen.model_copy(
-                    update={"source_order": event.source_order}
+                self._put(
+                    "seen",
+                    event.ref.event_id,
+                    seen.model_copy(update={"source_order": event.source_order}),
                 )
             return False
         if seen is None and len(self.state.seen) >= 1024:
@@ -399,9 +477,11 @@ class Controller:
             return False
         if old:
             self.observe_source_change(old.ref)
-        self.state.events[event.ref.event_id] = event
-        self.state.seen[event.ref.event_id] = SeenSource(
-            revision=event.ref.revision, at=event.at, source_order=event.source_order
+        self._put("events", event.ref.event_id, event)
+        self._put(
+            "seen",
+            event.ref.event_id,
+            SeenSource(revision=event.ref.revision, at=event.at, source_order=event.source_order),
         )
         if event.kind == "human":
             self._set(last_human_at=max(self.state.last_human_at or 0, event.at))
@@ -443,30 +523,36 @@ class Controller:
                 at=max(0.0, self.state.replay_after), value=0.0
             )
             self._set(trace_baselines=baselines)
-        self.state.seen[key] = SeenSource(
-            revision=max(invalid.revision, old_seen.revision if old_seen else 0),
-            at=old_seen.at if old_seen else self.state.now,
-            source_order=old_seen.source_order if old_seen else None,
+        self._put(
+            "seen",
+            key,
+            SeenSource(
+                revision=max(invalid.revision, old_seen.revision if old_seen else 0),
+                at=old_seen.at if old_seen else self.state.now,
+                source_order=old_seen.source_order if old_seen else None,
+            ),
         )
-        self.state.invalidated[key] = max(invalid.revision, self.state.invalidated.get(key, 0))
+        self._put("invalidated", key, max(invalid.revision, self.state.invalidated.get(key, 0)))
         current = self.state.events.get(key)
         if current is None or current.ref.revision <= invalid.revision:
-            self.state.receptions.pop(key, None)
+            self._pop("receptions", key, None)
         if current and current.ref.revision <= invalid.revision:
-            self.state.events.pop(key)
+            self._pop("events", key)
         for boundary_key, boundary in list(self.state.boundaries.items()):
             if any(
                 ref.event_id == key and ref.revision <= invalid.revision
                 for ref in (boundary.source, *boundary.dependencies)
             ):
-                self.state.boundaries.pop(boundary_key)
+                self._pop("boundaries", boundary_key)
             elif any(
                 ref.event_id == key and ref.revision <= invalid.revision
                 for ref in ((boundary.released_by,) if boundary.released_by else ())
                 + boundary.release_dependencies
             ):
-                self.state.boundaries[boundary_key] = boundary.model_copy(
-                    update={"released_by": None, "release_dependencies": ()}
+                self._put(
+                    "boundaries",
+                    boundary_key,
+                    boundary.model_copy(update={"released_by": None, "release_dependencies": ()}),
                 )
         for observation_key, observation in list(self.state.observations.items()):
             sources = (observation.snapshot.focus, *observation.snapshot.context)
@@ -483,7 +569,7 @@ class Controller:
                     *candidate.support.dependencies,
                 )
             ):
-                del self.state.candidates[candidate_id]
+                self._pop("candidates", candidate_id)
         self._refresh_releases(actor_identity=actor_identity)
 
         self._prune_participation()
@@ -491,18 +577,20 @@ class Controller:
     def _invalidate_observation(self, key: str) -> None:
         for boundary_key, boundary in list(self.state.boundaries.items()):
             if boundary.released_by and boundary.released_by.event_id == key:
-                self.state.boundaries[boundary_key] = boundary.model_copy(
-                    update={"released_by": None, "release_dependencies": ()}
+                self._put(
+                    "boundaries",
+                    boundary_key,
+                    boundary.model_copy(update={"released_by": None, "release_dependencies": ()}),
                 )
-        observation = self.state.observations.pop(key, None)
-        self.state.receptions.pop(key, None)
+        observation = self._pop("observations", key, None)
+        self._pop("receptions", key, None)
         if observation is None:
             return
-        self.state.boundaries.pop(key, None)
+        self._pop("boundaries", key, None)
         for candidate_id, candidate in list(self.state.candidates.items()):
             if candidate.support.observation_id == observation.observation_id:
-                self.state.candidates.pop(candidate_id)
-                self.state.attentions.pop(candidate_id, None)
+                self._pop("candidates", candidate_id)
+                self._pop("attentions", candidate_id, None)
 
     def _valid(self, ref: SourceRef) -> bool:
         event = self.state.events.get(ref.event_id)
@@ -618,19 +706,23 @@ class Controller:
             )
             else None
         )
-        self.state.observations[key] = StoredObservation.from_observation(observation).model_copy(
-            update={
-                "matching_self_anchor": matching_anchor,
-                "resolved_unit": effective_unit,
-                "unit_resolution": "semantic_new"
-                if semantic_new is not None
-                else ("observer" if observation.resolved_unit is not None else None),
-            },
+        self._put(
+            "observations",
+            key,
+            StoredObservation.from_observation(observation).model_copy(
+                update={
+                    "matching_self_anchor": matching_anchor,
+                    "resolved_unit": effective_unit,
+                    "unit_resolution": "semantic_new"
+                    if semantic_new is not None
+                    else ("observer" if observation.resolved_unit is not None else None),
+                },
+            ),
         )
         self._record_unit_reviews(observation, event, actor_identity=actor_identity)
         self._record_reception(key, self.state.observations[key])
-        self.state.candidates.pop(key, None)
-        self.state.boundaries.pop(key, None)
+        self._pop("candidates", key, None)
+        self._pop("boundaries", key, None)
         self._prune_participation()
         if event.unit_ambiguous:
             return True
@@ -641,14 +733,18 @@ class Controller:
             and _dimension_known(boundary)
             and act.p("close_topic") + act.p("ask_yuki_stop") >= 0.5
         ):
-            self.state.boundaries[key] = Boundary(
-                source=event.ref,
-                thread=event.thread,
-                target=event.target,
-                group_wide=boundary.p("group_thread") >= 0.5,
-                dependencies=tuple(e.ref for e in snap.context),
-                author=event.author,
-                explicit_stop=act.p("ask_yuki_stop") >= 0.5,
+            self._put(
+                "boundaries",
+                key,
+                Boundary(
+                    source=event.ref,
+                    thread=event.thread,
+                    target=event.target,
+                    group_wide=boundary.p("group_thread") >= 0.5,
+                    dependencies=tuple(e.ref for e in snap.context),
+                    author=event.author,
+                    explicit_stop=act.p("ask_yuki_stop") >= 0.5,
+                ),
             )
         self._refresh_releases(actor_identity=actor_identity)
         if self.state.consumed.get(key, 0) >= event.ref.revision:
@@ -687,17 +783,21 @@ class Controller:
             issued_at=observation.received_at,
             valid_until=until,
         )
-        self.state.candidates[key] = Candidate(
-            event=event,
-            kind=snap.kind,
-            support=support,
-            value=Estimate(
-                value=value, observation_id=observation.observation_id, valid_until=until
-            ),
-            floor=Estimate(
-                value=floor.p("yuki") + 0.7 * floor.p("open"),
-                observation_id=observation.observation_id,
-                valid_until=until,
+        self._put(
+            "candidates",
+            key,
+            Candidate(
+                event=event,
+                kind=snap.kind,
+                support=support,
+                value=Estimate(
+                    value=value, observation_id=observation.observation_id, valid_until=until
+                ),
+                floor=Estimate(
+                    value=floor.p("yuki") + 0.7 * floor.p("open"),
+                    observation_id=observation.observation_id,
+                    valid_until=until,
+                ),
             ),
         )
         self._prune()
@@ -879,8 +979,10 @@ class Controller:
             # An independent admission owns its new source, but cannot erase quiet.
             changes.update(binding=binding, review=None, continuation_refs=())
         checkpoint.units[key] = unit.model_copy(update=changes)
-        self.state.consumed[event_ref.event_id] = max(
-            event_ref.revision, self.state.consumed.get(event_ref.event_id, 0)
+        self._put(
+            "consumed",
+            event_ref.event_id,
+            max(event_ref.revision, self.state.consumed.get(event_ref.event_id, 0)),
         )
         self._save_participation(checkpoint)
         self._prune_participation(checkpoint)
@@ -1460,7 +1562,7 @@ class Controller:
     ) -> None:
         for key, candidate in tuple(self.state.candidates.items()):
             if self._invitation_superseded(candidate.event, checkpoint, actor_identity):
-                self.state.candidates.pop(key)
+                self._pop("candidates", key)
 
     def continuation_current(
         self,
@@ -1995,11 +2097,15 @@ class Controller:
                     )
             if reopenings:
                 _, _, event, observation = max(reopenings, key=lambda item: item[:2])
-                self.state.boundaries[boundary_key] = boundary.model_copy(
-                    update={
-                        "released_by": event.ref,
-                        "release_dependencies": observation.snapshot.context,
-                    }
+                self._put(
+                    "boundaries",
+                    boundary_key,
+                    boundary.model_copy(
+                        update={
+                            "released_by": event.ref,
+                            "release_dependencies": observation.snapshot.context,
+                        }
+                    ),
                 )
 
     def _eligible_groups(
@@ -2050,22 +2156,31 @@ class Controller:
         allowed_kinds: frozenset[CandidateKind] | None = None,
     ) -> dict[str, float]:
         """Rates for legal non-request SELF opportunities; invitations bypass sampling."""
+        groups = self._eligible_groups(
+            now, include_addressed=include_addressed, allowed_kinds=allowed_kinds
+        )
+        return self._opportunity_scores(now, groups, self._autonomy_pressure(now))
+
+    def _opportunity_scores(
+        self, now: float, groups: dict[str, list[Candidate]], pressure: float
+    ) -> dict[str, float]:
         raw: dict[str, float] = {}
         context = self._social_context(now)
-        pressure = self._autonomy_pressure(now)
         actions_by_unit: dict[tuple[str, str], list[BeliefAction]] | None = None
         last_human_by_unit: dict[tuple[str, str], float] = {}
-        for key, members in self._eligible_groups(
-            now, include_addressed=include_addressed, allowed_kinds=allowed_kinds
-        ).items():
+        for key, members in groups.items():
             candidate = self.state.candidates[key]
             tau = self.parameters.conversation_source_decay_seconds
             for member in members:
-                self.state.attentions[member.event.ref.event_id] = dynamics.source_attention(
-                    member.value.value,
-                    now - member.event.at,
-                    now - max(member.support.issued_at, member.event.at),
-                    tau,
+                self._put(
+                    "attentions",
+                    member.event.ref.event_id,
+                    dynamics.source_attention(
+                        member.value.value,
+                        now - member.event.at,
+                        now - max(member.support.issued_at, member.event.at),
+                        tau,
+                    ),
                 )
             if any(self._addressed(member) for member in members):
                 raw[key] = max(member.value.value * member.floor.value for member in members)
@@ -2297,7 +2412,7 @@ class Controller:
         old = self.state.outbound_anchors.get(event_id)
         if old is not None:
             return old == OutboundAnchor(run_ref=run_ref, at=at)
-        self.state.outbound_anchors[event_id] = OutboundAnchor(run_ref=run_ref, at=at)
+        self._put("outbound_anchors", event_id, OutboundAnchor(run_ref=run_ref, at=at))
         for key, observation in self.state.observations.items():
             if observation.matching_self_anchor is not None:
                 if observation.matching_self_anchor.event_id == event_id:
@@ -2309,7 +2424,7 @@ class Controller:
         event = self.state.events.get(event_id)
         act = observation.answers.get("interaction_mark")
         if event is None or event.kind != "human" or not _dimension_known(act):
-            self.state.receptions.pop(event_id, None)
+            self._pop("receptions", event_id, None)
             return
         if anchor is None:
             # Other group talk is weak evidence of being passed over, never proof
@@ -2323,7 +2438,7 @@ class Controller:
                 default=None,
             )
             if recent is None or act.p("other_exchange") == 0:
-                self.state.receptions.pop(event_id, None)
+                self._pop("receptions", event_id, None)
                 return
             sent_at, run_ref = recent
             assert sent_at is not None
@@ -2334,16 +2449,16 @@ class Controller:
                     -(event.at - sent_at) / self.parameters.unanchored_reception_decay_seconds
                 )
             )
-            self.state.receptions[event_id] = Reception(run_ref=run_ref, at=event.at, score=score)
+            self._put("receptions", event_id, Reception(run_ref=run_ref, at=event.at, score=score))
             return
         run = self.state.outbound_anchors.get(anchor.event_id)
         if run is None:
-            self.state.receptions.pop(event_id, None)
+            self._pop("receptions", event_id, None)
             return
         positive = act.p("extend_yuki") + act.p("acknowledge") + act.p("invite_yuki")
         negative = act.p("ask_yuki_stop")
         score = max(-1.0, min(1.0, positive - negative))
-        self.state.receptions[event_id] = Reception(run_ref=run.run_ref, at=event.at, score=score)
+        self._put("receptions", event_id, Reception(run_ref=run.run_ref, at=event.at, score=score))
 
     def _leaky_trace(
         self,
@@ -2374,7 +2489,7 @@ class Controller:
         old = self.state.self_reports.get(report.run_ref)
         if old and (report.sequence <= old.sequence or report.response_id == old.response_id):
             return False
-        self.state.self_reports[report.run_ref] = report
+        self._put("self_reports", report.run_ref, report)
         last = self.state.engagement_report
         if report.delta.engage is not None and (last is None or report.at >= last.at):
             self._set(engagement_report=report)
@@ -2398,8 +2513,10 @@ class Controller:
         # Real execution/delivery remains in the Host ledger; do not recreate it here.
         if effect.at <= self.state.replay_after:
             return False
-        self.state.effects[effect.effect_id] = RecordedEffect(
-            proposal_id=f"host:{run_ref}", run_ref=run_ref, effect=effect
+        self._put(
+            "effects",
+            effect.effect_id,
+            RecordedEffect(proposal_id=f"host:{run_ref}", run_ref=run_ref, effect=effect),
         )
         return True
 
@@ -2415,6 +2532,9 @@ class Controller:
         return value * math.exp(-(now - last.at) / self.parameters.willingness_decay_seconds)
 
     def intrinsic_opportunity(self, now: float) -> float:
+        return self._intrinsic_opportunity(now, self._autonomy_pressure(now))
+
+    def _intrinsic_opportunity(self, now: float, pressure: float) -> float:
         return dynamics.intrinsic_rate(
             human_activity=self._human_activity(now),
             seconds_since_human=(
@@ -2422,7 +2542,7 @@ class Controller:
                 if self.state.last_human_at is not None
                 else None
             ),
-            pressure=self._autonomy_pressure(now),
+            pressure=pressure,
             parameters=self.parameters,
         )
 
@@ -2462,9 +2582,8 @@ class Controller:
         groups = self._eligible_groups(
             now, include_addressed=include_addressed, allowed_kinds=allowed_kinds
         )
-        scores = self.opportunity_scores(
-            now, include_addressed=include_addressed, allowed_kinds=allowed_kinds
-        )
+        pressure = self._autonomy_pressure(now)
+        scores = self._opportunity_scores(now, groups, pressure)
         addressed = [
             key
             for key, members in groups.items()
@@ -2478,7 +2597,7 @@ class Controller:
                 boundary.explicit_stop and boundary.group_wide and boundary.released_by is None
                 for boundary in self.state.boundaries.values()
             ):
-                scores["__intrinsic__"] = self.intrinsic_opportunity(now)
+                scores["__intrinsic__"] = self._intrinsic_opportunity(now, pressure)
             if not scores:
                 self._set(last_sample_at=now)
                 return None
@@ -2525,7 +2644,7 @@ class Controller:
                 created_at=now,
                 expires_at=min(member.support.valid_until for member in members),
             )
-        self.state.proposals[proposal.proposal_id] = proposal
+        self._put("proposals", proposal.proposal_id, proposal)
         self._set(pending=proposal.proposal_id)
         return proposal
 
@@ -2543,7 +2662,7 @@ class Controller:
             or any(e.proposal_id == proposal_id for e in self.state.effects.values())
         ):
             return False
-        self.state.proposals.pop(proposal_id)
+        self._pop("proposals", proposal_id)
         self._set(pending=None)
         return True
 
@@ -2582,13 +2701,17 @@ class Controller:
             return False
         if any(ref not in proposal.sources for ref in feedback.considered_refs):
             return False
-        self.state.feedback[feedback.run_ref] = feedback
-        self.state.proposal_runs[proposal.proposal_id] = feedback.run_ref
+        self._put("feedback", feedback.run_ref, feedback)
+        self._put("proposal_runs", proposal.proposal_id, feedback.run_ref)
         for effect in incoming_effects.values():
-            self.state.effects[effect.effect_id] = RecordedEffect(
-                proposal_id=proposal.proposal_id,
-                run_ref=feedback.run_ref,
-                effect=effect,
+            self._put(
+                "effects",
+                effect.effect_id,
+                RecordedEffect(
+                    proposal_id=proposal.proposal_id,
+                    run_ref=feedback.run_ref,
+                    effect=effect,
+                ),
             )
             if effect.kind == "message":
                 self._set(last_self_message_at=max(self.state.last_self_message_at or 0, effect.at))
@@ -2615,7 +2738,7 @@ class Controller:
                             else first_public
                         }
                     )
-                self.state.work_pulses[feedback.run_ref] = pulse
+                self._put("work_pulses", feedback.run_ref, pulse)
                 if messages and not was_public:
                     for event_id, observation in self.state.observations.items():
                         event = self.state.events.get(event_id)
@@ -2626,9 +2749,13 @@ class Controller:
             # acceptance notification can be missing; its sources must not reopen merely
             # because the final receipt contains no additional considered_refs.
             for ref in proposal.sources:
-                self.state.consumed[ref.event_id] = max(
-                    ref.revision,
-                    self.state.consumed.get(ref.event_id, 0),
+                self._put(
+                    "consumed",
+                    ref.event_id,
+                    max(
+                        ref.revision,
+                        self.state.consumed.get(ref.event_id, 0),
+                    ),
                 )
             if old is None or old.outcome in {"busy", "rejected"}:
                 self._set(last_accepted=max(self.state.last_accepted, feedback.at))
@@ -2654,10 +2781,10 @@ class Controller:
         )
         for run_ref, pulse in list(self.state.work_pulses.items()):
             if pulse.started_at < social_cutoff:
-                self.state.work_pulses.pop(run_ref)
+                self._pop("work_pulses", run_ref)
         for event_id, anchor in list(self.state.outbound_anchors.items()):
             if anchor.at < self.state.now - 3600:
-                self.state.outbound_anchors.pop(event_id)
+                self._pop("outbound_anchors", event_id)
         reception_cutoff = self.state.now - 2 * 86400
         evicted: list[tuple[str, Reception]] = []
         if len(self.state.receptions) > 2048 or any(
@@ -2692,10 +2819,12 @@ class Controller:
             for event_id, record in evicted:
                 work_pulse = self.state.work_pulses.get(record.run_ref)
                 if work_pulse is not None and record.score > work_pulse.archived_positive:
-                    self.state.work_pulses[record.run_ref] = work_pulse.model_copy(
-                        update={"archived_positive": record.score}
+                    self._put(
+                        "work_pulses",
+                        record.run_ref,
+                        work_pulse.model_copy(update={"archived_positive": record.score}),
                     )
-                self.state.receptions.pop(event_id)
+                self._pop("receptions", event_id)
         boundary = max(self.state.replay_after, math.nextafter(cutoff, -math.inf))
         retained = sorted(
             (event for event in self.state.events.values() if event.at > boundary),
@@ -2721,9 +2850,9 @@ class Controller:
         # cannot re-enter through observe_committed_event's time fence.
         for key, event in list(self.state.events.items()):
             if event.at <= self.state.replay_after:
-                self.state.events.pop(key)
-                self.state.observations.pop(key, None)
-                self.state.candidates.pop(key, None)
+                self._pop("events", key)
+                self._pop("observations", key, None)
+                self._pop("candidates", key, None)
         boundary_refs = {
             ref.event_id
             for boundary in self.state.boundaries.values()
@@ -2740,43 +2869,43 @@ class Controller:
                 and key not in boundary_refs
                 and key not in participation_refs
             ):
-                self.state.seen.pop(key)
-        for mapping in (self.state.consumed, self.state.invalidated):
-            for key in list(mapping):
+                self._pop("seen", key)
+        for name in ("consumed", "invalidated"):
+            for key in list(getattr(self.state, name)):
                 if key not in self.state.seen and key not in self.state.boundaries:
-                    mapping.pop(key)
+                    self._pop(name, key)
+        recent_runs = {
+            record.run_ref for record in self.state.effects.values() if record.effect.at >= cutoff
+        }
         for run, feedback in list(self.state.feedback.items()):
-            recent_effect = any(
-                record.run_ref == run and record.effect.at >= cutoff
-                for record in self.state.effects.values()
-            )
+            recent_effect = run in recent_runs
             if feedback.at < cutoff and not recent_effect:
                 # Accepted execution belongs to the Host, even if its final
                 # short-lived scheduling feedback never reached this controller.
                 if self.state.pending == feedback.proposal_id:
                     self._set(pending=None)
-                self.state.feedback.pop(run)
-                self.state.proposals.pop(feedback.proposal_id, None)
-                self.state.proposal_runs.pop(feedback.proposal_id, None)
-                self.state.self_reports.pop(run, None)
+                self._pop("feedback", run)
+                self._pop("proposals", feedback.proposal_id, None)
+                self._pop("proposal_runs", feedback.proposal_id, None)
+                self._pop("self_reports", run, None)
         for key, effect in list(self.state.effects.items()):
             if (
                 effect.effect.at < cutoff
                 and effect.run_ref not in self.state.feedback
                 and key not in expression_ids
             ):
-                self.state.effects.pop(key)
+                self._pop("effects", key)
         referenced = {feedback.proposal_id for feedback in self.state.feedback.values()}
         for key, proposal in list(self.state.proposals.items()):
             if proposal.expires_at < cutoff and key not in referenced and key != self.state.pending:
-                self.state.proposals.pop(key)
+                self._pop("proposals", key)
         # Never silently discard unresolved boundary or run identities to make room.
         self._set(
             capacity_blocked=len(self.state.boundaries) > 256 or len(self.state.proposals) > 256
         )
         for key in list(self.state.attentions):
             if key not in self.state.candidates:
-                self.state.attentions.pop(key)
+                self._pop("attentions", key)
         if self.state.pending:
             proposal = self.state.proposals[self.state.pending]
             accepted = any(
