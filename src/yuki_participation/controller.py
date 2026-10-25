@@ -346,6 +346,28 @@ class State(Record):
         return migrated
 
 
+def _same_fact(left: object, right: object) -> bool:
+    """Compare ordered facts without encoding retained bodies or losing signed zero."""
+    if left is right:
+        return True
+    if type(left) is not type(right):
+        return False
+    if isinstance(left, Record) and isinstance(right, Record):
+        return _same_fact(left.__dict__, right.__dict__)
+    if isinstance(left, dict) and isinstance(right, dict):
+        return len(left) == len(right) and all(
+            key == other and _same_fact(value, right_value)
+            for (key, value), (other, right_value) in zip(left.items(), right.items(), strict=True)
+        )
+    if isinstance(left, (tuple, list)) and isinstance(right, (tuple, list)):
+        return len(left) == len(right) and all(
+            _same_fact(value, other) for value, other in zip(left, right, strict=True)
+        )
+    if isinstance(left, float) and isinstance(right, float) and left == right == 0:
+        return math.copysign(1, left) == math.copysign(1, right)
+    return left == right
+
+
 class Controller:
     """Semantic opportunities with a single Host-owned admission boundary."""
 
@@ -365,12 +387,9 @@ class Controller:
         self.parameters = parameters
 
     def _set(self, **updates: object) -> None:
-
         for name, value in updates.items():
             old = getattr(self.state, name)
-            changed = old != value or (
-                isinstance(old, dict) and isinstance(value, dict) and tuple(old) != tuple(value)
-            )
+            changed = not _same_fact(old, value)
             if changed:
                 if name in HOT_FIELDS:
                     self.progress_changed = True
@@ -380,7 +399,7 @@ class Controller:
 
     def _put(self, name: str, key: str, value: Any) -> None:
         mapping = getattr(self.state, name)
-        if key not in mapping or mapping[key] != value:
+        if key not in mapping or not _same_fact(mapping[key], value):
             if name == "attentions":
                 self.progress_changed = True
             if name != "attentions" or key not in mapping:

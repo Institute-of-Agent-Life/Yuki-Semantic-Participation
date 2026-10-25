@@ -148,3 +148,22 @@ def test_migration_ddl_failure_leaves_whole_old_format(tmp_path):
     store = SnapshotStore(path)
     assert store.load(SCOPE)[0] == 17
     store.close()
+
+
+def test_dirty_captures_signed_zero_and_nested_unknown_namespace_order():
+    c = Controller(SCOPE, 0)
+    c.set_state_entry("host_checkpoint", "extension", {"nested": {"a": 1, "b": 2}})
+    first = freeze(c.state)
+    c.take_changes()
+    c._set(now=-0.0)
+    assert c.take_changes() == (True, False)
+    hot = freeze(c.state, body_changed=False, saved_layout=first.layout)
+    assert hot.body is None
+    assert thaw(SCOPE, hot.progress, first.body).model_dump_json() == c.state.model_dump_json()
+    c.set_state_entry("host_checkpoint", "extension", {"nested": {"b": 2, "a": 1}})
+    assert c.take_changes() == (False, True)
+    reordered = freeze(c.state, body_changed=True, saved_layout=first.layout)
+    assert (
+        thaw(SCOPE, reordered.progress, reordered.body).model_dump_json()
+        == c.state.model_dump_json()
+    )

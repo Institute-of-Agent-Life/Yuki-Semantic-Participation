@@ -18,10 +18,11 @@ State 的解析/再编码。一次 key LEFT JOIN 区分不存在与半对损坏�
 逐 tick、参数热更及冷恢复，逐步比较全部 38 字段及冷热往返。存储回归另覆盖 typed 数值 token、
 容量、布局顺序、半对、CAS、迁移与中断回滚。没有付费请求或线上数据。
 
-[本地合成开销](research/narrow-snapshot-cost-20261026.json)用 8 scope、每 scope 60 KB 不变扩展、
-每 scope 80 次真实 advance/save：旧/新分别编码 39,085,568 / 260,608 bytes，WAL 文件
-6,262,432 / 2,636,832 bytes，计时约 0.376 / 0.286 秒。关闭 WAL 自动 checkpoint 以比较写量；
-这是本机保存路径样本，不能换算成生产总 CPU 或聊天延迟改善倍数。
+[本地合成开销](research/narrow-snapshot-cost-20261026.json)使用原 Host 的完整编码→adapter
+解析 State→Store 再编码路径，对照新 freeze→Store bytes；两边都运行真实 advance，均不计
+executor 调度。每次 8 scope、每 scope 60 KB 不变扩展、80 tick，分别测 0 与 64 个真实保留
+belief baseline，保存原始时长、编码量和 WAL。关闭 WAL 自动 checkpoint 以比较写量。
+这是本机单次合成样本，不能换算成生产总 CPU 或聊天延迟改善倍数。
 
 2026-10-23：非语义效果若已越过现有 `replay_after` 退休边界，不再重新插入短期调度状态
 并触发全局整理；已有 effect ID 仍核对原身份，迟到真实 message 仅推进 last_self_message。
