@@ -2,6 +2,7 @@
 
 import json
 import os
+import sqlite3
 import subprocess
 import sys
 from pathlib import Path
@@ -26,7 +27,7 @@ def binding(source, *, thread=None, target=None, basis=None):
     )
 
 
-def save_historical_wire(store, state):
+def save_historical_wire(path, state):
     """A frozen old producer's wire shape, not forward support in its strict reader."""
     raw = state.model_dump(mode="json")
     for original_event in raw["events"].values():
@@ -37,10 +38,14 @@ def save_historical_wire(store, state):
     for report in (*raw["self_reports"].values(), raw["engagement_report"]):
         if report is not None:
             report.pop("source", None)
-    store.connection.execute(
-        "INSERT INTO snapshots VALUES(?,?,?,?)",
-        (state.scope.conversation_id, state.scope.generation, 1, json.dumps(raw).encode()),
-    )
+    with sqlite3.connect(path) as connection:
+        connection.execute("""CREATE TABLE snapshots(scope TEXT NOT NULL,
+            generation INTEGER NOT NULL,revision INTEGER NOT NULL,payload BLOB NOT NULL,
+            PRIMARY KEY(scope,generation))""")
+        connection.execute(
+            "INSERT INTO snapshots VALUES(?,?,?,?)",
+            (state.scope.conversation_id, state.scope.generation, 1, json.dumps(raw).encode()),
+        )
 
 
 def admitted():
@@ -413,9 +418,7 @@ def test_historical_wire_old_reader_load_save_keeps_namespace_and_other_host_key
     c.state.host_checkpoint["outbound_threads"] = {"event:old": "old-thread"}
     namespace = c.state.host_checkpoint[CHECKPOINT_KEY]
     database = tmp_path / "participation.sqlite3"
-    store = SnapshotStore(database)
-    save_historical_wire(store, c.state)
-    store.close()
+    save_historical_wire(database, c.state)
     paths = subprocess.check_output(
         ["git", "ls-tree", "-r", "--name-only", revision, "src/yuki_participation"], text=True
     ).splitlines()

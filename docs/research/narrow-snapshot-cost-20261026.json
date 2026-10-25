@@ -1,0 +1,26 @@
+{
+  "workload": {
+    "scopes": 8,
+    "ticks_per_scope": 80,
+    "padding_utf8_bytes_per_scope": 60000,
+    "actual_advance": true
+  },
+  "runs": [
+    {
+      "name": "old",
+      "elapsed_seconds": 0.3756583998911083,
+      "wal_bytes": 6262432,
+      "encoded_bytes": 39085568,
+      "cold_writes": 640,
+      "commits": 640
+    },
+    {
+      "name": "narrow",
+      "elapsed_seconds": 0.28565629990771413,
+      "wal_bytes": 2636832,
+      "encoded_bytes": 260608,
+      "cold_writes": 0,
+      "commits": 640
+    }
+  ]
+}

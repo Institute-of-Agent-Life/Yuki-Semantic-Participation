@@ -34,6 +34,8 @@ class ObservationSession:
         self.retry_after = 0.0
         self.last_error: str | None = None
         self.last_failure: dict[str, object] | None = None
+        self._checkpoint_changed = True
+        self._saved_scalars: tuple[object, ...] | None = None
         checkpoint = controller.state.observer_checkpoint
         if checkpoint:
             if checkpoint.get("version") != 1:
@@ -68,18 +70,38 @@ class ObservationSession:
 
     def checkpoint(self) -> None:
         """Host persists controller.state; queue material refers to its canonical source copy."""
-        self.controller.state = self.controller.state.model_copy(
-            update={
-                "observer_checkpoint": {
-                    "version": 1,
-                    "queue": self.queue.checkpoint(),
-                    "health": asdict(self.health),
-                    "retry_after": self.retry_after,
-                    "last_error": self.last_error,
-                    "last_failure": self.last_failure,
-                }
+        scalars = (
+            len(self.queue.pending),
+            self.queue.sequence,
+            self.queue.last_call,
+            self.queue.dropped,
+            self.queue.expired,
+            self.queue.invalidated,
+            self.retry_after,
+            self.last_error,
+            self.health.degraded,
+            self.health.failures,
+            self.health.last_success,
+            self.health.failed_since,
+        )
+        if (
+            not self.queue.changed
+            and not self._checkpoint_changed
+            and scalars == self._saved_scalars
+        ):
+            return
+        self.controller._set(
+            observer_checkpoint={
+                "version": 1,
+                "queue": self.queue.checkpoint(),
+                "health": asdict(self.health),
+                "retry_after": self.retry_after,
+                "last_error": self.last_error,
+                "last_failure": self.last_failure,
             }
         )
+        self.queue.changed = self._checkpoint_changed = False
+        self._saved_scalars = scalars
 
     def observe(self, event: ScopedEvent, kind: CandidateKind = CandidateKind.CONVERSATION) -> None:
         """Record context only. Hosts separately request observation when needed."""
@@ -125,6 +147,8 @@ class ObservationSession:
         )
 
     def _discard_quiet_reviews(self, now: float, actor_identity: ActorIdentity) -> None:
+        if not self.queue.pending:
+            return
         checkpoint = self.controller._participation_checkpoint()
         quiet = {
             (unit.unit.thread, actor_identity(unit.unit.target))
@@ -170,13 +194,23 @@ class ObservationSession:
             ):
                 self.queue.discard(key)
 
+    def maintain(self, now: float, *, actor_identity: ActorIdentity = original_actor) -> None:
+        """Apply original expiry/revocation/quiet cleanup without preparing a request."""
+        self.queue.discard_unavailable(now, self.controller.state.events)
+        self._discard_quiet_reviews(now, actor_identity)
+        self.checkpoint()
+
+    def ready(self, now: float) -> bool:
+        return self.queue.ready(now, retry_after=self.retry_after)
+
+    def next_due(self) -> float | None:
+        return self.queue.next_due(retry_after=self.retry_after)
+
     async def evaluate_due(
         self, now: float, *, actor_identity: ActorIdentity = original_actor
     ) -> bool:
         """At most one real request. Inputs may arrive while HTTP is in progress."""
-        self.queue.discard_unavailable(now, self.controller.state.events)
-        self._discard_quiet_reviews(now, actor_identity)
-        self.checkpoint()
+        self.maintain(now, actor_identity=actor_identity)
         if now < self.retry_after:
             return False
         snapshot = self.queue.take(
@@ -208,6 +242,7 @@ class ObservationSession:
                 self._failed(snapshot, now, "partial_required_dimensions_invalid")
                 return False
             self.health.success(max(now, observation.received_at))
+            self._checkpoint_changed = True
             self.last_error = None
             self.retry_after = 0.0
             return applied
@@ -240,6 +275,7 @@ class ObservationSession:
         self, snapshot: Snapshot, now: float, category: str, *, status: int | None = None
     ) -> None:
         """Keep bounded diagnostics and retry only still-fresh real inputs."""
+        self._checkpoint_changed = True
         self.last_error = category
         self.last_failure = {
             "category": category,

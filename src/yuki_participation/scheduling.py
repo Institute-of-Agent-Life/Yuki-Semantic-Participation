@@ -39,9 +39,11 @@ class ObservationQueue:
         self.dropped = 0
         self.expired = 0
         self.invalidated = 0
+        self.changed = True
 
     def discard(self, key: str) -> Pending:
         item = self.pending.pop(key)
+        self.changed = True
         if item.unit is not None:
             self._unit_pending.pop(item.unit, None)
         return item
@@ -91,6 +93,7 @@ class ObservationQueue:
         self.pending[key] = Pending(
             event, kind, old.first_dirty if old else event.at, event.at, unit
         )
+        self.changed = True
         if unit is not None:
             self._unit_pending[unit] = key
         while len(self.pending) > self.max_pending:
@@ -172,6 +175,30 @@ class ObservationQueue:
         self.last_call = now
         return self.in_flight
 
+    def ready(self, now: float, *, retry_after: float = 0.0) -> bool:
+        """Project the original request boundary without consuming a pending source."""
+        return self.in_flight is None and any(
+            max(min(p.last_dirty + 3, p.first_dirty + 20), self.last_call + 12, retry_after)
+            <= now
+            < self.expires_at(p)
+            for p in self.pending.values()
+        )
+
+    def next_due(self, *, retry_after: float = 0.0) -> float | None:
+        boundaries = [self.expires_at(p) for p in self.pending.values()]
+        if self.in_flight is None:
+            boundaries.extend(
+                due
+                for p in self.pending.values()
+                if (
+                    due := max(
+                        min(p.last_dirty + 3, p.first_dirty + 20), self.last_call + 12, retry_after
+                    )
+                )
+                < self.expires_at(p)
+            )
+        return min(boundaries, default=None)
+
     def retry(self) -> None:
         """Retry the paid focus only if it has not been superseded by newer material."""
         pending = self._in_flight_pending
@@ -182,12 +209,15 @@ class ObservationQueue:
         self.offer(pending.event, pending.kind, unit=pending.unit)
         restored = self.pending.get(pending.event.ref.event_id)
         if restored is not None and restored.event.ref == pending.event.ref:
-            restored.first_dirty = min(restored.first_dirty, pending.first_dirty)
+            first = min(restored.first_dirty, pending.first_dirty)
+            self.changed |= restored.first_dirty != first
+            restored.first_dirty = first
 
     def finish(self, sequence: int) -> None:
         if self.in_flight and self.in_flight.sequence == sequence:
             self.in_flight = None
             self._in_flight_pending = None
+            self.changed = True
 
     @staticmethod
     def _pending_record(item: Pending) -> dict[str, object]:
