@@ -87,7 +87,8 @@ class Choice(Record):
     def distribution(self) -> Choice:
         if not self.probabilities or self.choice not in self.probabilities:
             raise ValueError("invalid_choice")
-        if not math.isclose(sum(self.probabilities.values()), 1, abs_tol=1e-5):
+        # Two-decimal rounding can leave the sum 0.01 away from 1.
+        if not math.isclose(sum(self.probabilities.values()), 1, abs_tol=1.5e-2):
             raise ValueError("probabilities_must_sum_to_one")
         if self.probabilities[self.choice] < max(self.probabilities.values()) - 1e-5:
             raise ValueError("choice_must_be_maximum")
