@@ -34,6 +34,7 @@ class ObservationSession:
         self.retry_after = 0.0
         self.last_error: str | None = None
         self.last_failure: dict[str, object] | None = None
+        self._backoff_connection: str | None = None
         self._checkpoint_changed = True
         self._saved_scalars: tuple[object, ...] | None = None
         checkpoint = controller.state.observer_checkpoint
@@ -61,6 +62,9 @@ class ObservationSession:
             self.retry_after = float(retry_after)
             self.last_error = last_error
             self.last_failure = failure
+            recorded = checkpoint.get("backoff_connection")
+            self._backoff_connection = recorded if isinstance(recorded, str) else None
+        self._adopt_connection()
         # Existing observations must never be mistaken for newer responses after a restart.
         self.queue.sequence = max(
             self.queue.sequence,
@@ -83,6 +87,7 @@ class ObservationSession:
             self.health.failures,
             self.health.last_success,
             self.health.failed_since,
+            self._backoff_connection,
         )
         if (
             not self.queue.changed
@@ -98,10 +103,36 @@ class ObservationSession:
                 "retry_after": self.retry_after,
                 "last_error": self.last_error,
                 "last_failure": self.last_failure,
+                "backoff_connection": self._backoff_connection,
             }
         )
         self.queue.changed = self._checkpoint_changed = False
         self._saved_scalars = scalars
+
+    def _adopt_connection(self) -> None:
+        """A changed connection clears the wait that belongs to the previous one."""
+
+        current = getattr(self.observer, "connection_revision", None)
+        if not isinstance(current, str):
+            return
+        if self._backoff_connection is None:
+            self._backoff_connection = current
+            self._checkpoint_changed = True
+            return
+        if current == self._backoff_connection:
+            return
+        self._backoff_connection = current
+        self.retry_after = 0.0
+        if (
+            self.last_failure is not None
+            and self.last_failure.get("category") == "request_validation"
+        ):
+            self.last_failure = None
+        self._checkpoint_changed = True
+
+    def _provider_available(self) -> bool:
+        available = getattr(self.observer, "available", None)
+        return True if available is None else bool(available())
 
     def observe(self, event: ScopedEvent, kind: CandidateKind = CandidateKind.CONVERSATION) -> None:
         """Record context only. Hosts separately request observation when needed."""
@@ -120,6 +151,7 @@ class ObservationSession:
         if event.kind != "human" or kind is not CandidateKind.CONVERSATION:
             return False
         source = ref.model_dump(mode="json")
+        self._adopt_connection()
         if (
             self.last_failure is not None
             and self.last_failure.get("category") == "request_validation"
@@ -201,17 +233,22 @@ class ObservationSession:
         self.checkpoint()
 
     def ready(self, now: float) -> bool:
+        self._adopt_connection()
+        if not self._provider_available():
+            return False
         return self.queue.ready(now, retry_after=self.retry_after)
 
     def next_due(self) -> float | None:
+        self._adopt_connection()
         return self.queue.next_due(retry_after=self.retry_after)
 
     async def evaluate_due(
         self, now: float, *, actor_identity: ActorIdentity = original_actor
     ) -> bool:
         """At most one real request. Inputs may arrive while HTTP is in progress."""
+        self._adopt_connection()
         self.maintain(now, actor_identity=actor_identity)
-        if now < self.retry_after:
+        if not self._provider_available() or now < self.retry_after:
             return False
         snapshot = self.queue.take(
             now,
@@ -283,6 +320,9 @@ class ObservationSession:
             "at": now,
             "source": snapshot.focus.ref.model_dump(mode="json"),
         }
+        current = getattr(self.observer, "connection_revision", None)
+        if isinstance(current, str):
+            self._backoff_connection = current
         if status == 422:
             # This request was rejected. Do not retry the same source or turn it
             # into a permanent scope-wide configuration/ownership failure.

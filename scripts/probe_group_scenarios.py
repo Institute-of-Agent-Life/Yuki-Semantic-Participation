@@ -39,11 +39,16 @@ def make_event(row: dict[str, object], scope: Scope) -> ScopedEvent:
 
 async def probe(fixture: dict[str, object]) -> dict[str, object]:
     key = os.environ.get("SEMANTIC_PARTICIPATION_API_KEY", "")
-    if not key:
-        raise ValueError("Jev key is not configured in this process")
-    model = os.environ.get("SEMANTIC_PARTICIPATION_MODEL", "jev-1.13.0")
+    endpoint = os.environ.get("SEMANTIC_PARTICIPATION_ENDPOINT", "")
+    model = os.environ.get("SEMANTIC_PARTICIPATION_MODEL", "")
+    if not key or not endpoint or not model:
+        raise ValueError("semantic endpoint, model and key are not configured in this process")
     observer = JevObserver(
-        key, identity=lambda: {"display_name": "Yuki", "aliases": ()}, model=model
+        key,
+        identity=lambda: {"display_name": "Yuki", "aliases": ()},
+        endpoint=endpoint,
+        request_model=model,
+        response_model=os.environ.get("SEMANTIC_PARTICIPATION_RESPONSE_MODEL") or None,
     )
     results: list[dict[str, object]] = []
     try:

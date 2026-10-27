@@ -1,10 +1,11 @@
-"""Jev native protocol adapter. No chat fallback, automatic retry or fabricated scores."""
+"""System One protocol adapter. No chat fallback, automatic retry or fabricated scores."""
 
 from __future__ import annotations
 
 import json
 import time
 from collections.abc import Callable, Mapping
+from dataclasses import dataclass
 from typing import Protocol
 from uuid import uuid4
 
@@ -16,6 +17,19 @@ from .models import Choice, Observation, ScopedEvent, Snapshot
 from .rubric import REVISION, questions
 
 PROJECTION_REVISION = "semantic-state-v3"
+
+
+@dataclass(frozen=True)
+class SemanticConnection:
+    """One saved observation endpoint. The revision identifies the connection, not its secret."""
+
+    endpoint: str
+    api_key: str
+    request_model: str
+    response_model: str
+    timeout_seconds: float
+    name: str
+    revision: str
 
 
 class SemanticObserver(Protocol):
@@ -30,26 +44,95 @@ class JevObserver:
         api_key: str,
         *,
         identity: Callable[[], Mapping[str, object]],
-        model: str = "jev-1.13.0",
+        endpoint: str,
+        request_model: str,
+        response_model: str | None = None,
+        timeout_seconds: float = 12,
+        name: str = "semantic",
+        revision: str = "",
         client: httpx.AsyncClient | None = None,
     ) -> None:
-        if not api_key.strip() or model in {"jev-latest", "latest"}:
-            raise ValueError("semantic_provider_requires_key_and_pinned_model")
-        self._key = api_key
         self._identity = identity
-        self.model = model
         self._owned = client is None
-        self._client = client or httpx.AsyncClient(timeout=12)
+        self._client = client or httpx.AsyncClient()
+        self._connection = self._require(
+            endpoint=endpoint,
+            api_key=api_key,
+            request_model=request_model,
+            response_model=response_model or request_model,
+            timeout_seconds=timeout_seconds,
+            name=name,
+            revision=revision,
+        )
+
+    @staticmethod
+    def _require(
+        *,
+        endpoint: str,
+        api_key: str,
+        request_model: str,
+        response_model: str,
+        timeout_seconds: float,
+        name: str,
+        revision: str,
+    ) -> SemanticConnection:
+        if (
+            not api_key.strip()
+            or not endpoint.strip()
+            or not request_model.strip()
+            or not response_model.strip()
+            or timeout_seconds <= 0
+            or not name.strip()
+        ):
+            raise ValueError("semantic_provider_requires_key_and_pinned_model")
+        return SemanticConnection(
+            endpoint=endpoint,
+            api_key=api_key,
+            request_model=request_model,
+            response_model=response_model,
+            timeout_seconds=timeout_seconds,
+            name=name,
+            revision=revision,
+        )
+
+    def replace_connection(self, connection: SemanticConnection) -> None:
+        """Publish the next request's connection. A request already encoding keeps its copy."""
+
+        if not isinstance(connection, SemanticConnection):
+            raise ValueError("semantic_provider_requires_key_and_pinned_model")
+        self._connection = connection
+
+    @property
+    def connection_revision(self) -> str:
+        return self._connection.revision
+
+    @property
+    def model(self) -> str:
+        return self._connection.request_model
+
+    def available(self) -> bool:
+        connection = self._connection
+        return bool(
+            connection.api_key.strip()
+            and connection.endpoint.strip()
+            and connection.request_model.strip()
+            and connection.response_model.strip()
+        )
 
     def _encode_request(
-        self, snapshot: Snapshot, *, actor_identity: ActorIdentity = original_actor
+        self,
+        snapshot: Snapshot,
+        *,
+        actor_identity: ActorIdentity = original_actor,
+        connection: SemanticConnection | None = None,
     ) -> bytes:
+        selected = self._connection if connection is None else connection
         state = self._semantic_state(snapshot, actor_identity=actor_identity)
         identity = dict(self._identity())
         state["agent_identity"] = identity
         return json.dumps(
             {
-                "model": self.model,
+                "model": selected.request_model,
                 "state": state,
                 "questions": questions(
                     name=str(identity["display_name"]),
@@ -196,22 +279,25 @@ class JevObserver:
     async def evaluate(
         self, snapshot: Snapshot, *, actor_identity: ActorIdentity = original_actor
     ) -> Observation:
+        connection = self._connection
         rubric = questions(
             unit_options=snapshot.focus.unit_options if snapshot.focus.unit_ambiguous else (),
         )
-        encoded = self._encode_request(snapshot, actor_identity=actor_identity)
+        encoded = self._encode_request(
+            snapshot, actor_identity=actor_identity, connection=connection
+        )
         result = await self._client.post(
-            "https://api.typesafe.ai/v1/systemone",
+            connection.endpoint,
             headers={
-                "Authorization": f"Bearer {self._key}",
+                "Authorization": f"Bearer {connection.api_key}",
                 "Content-Type": "application/json",
             },
             content=encoded,
-            timeout=12,
+            timeout=connection.timeout_seconds,
         )
         result.raise_for_status()
         data = result.json()
-        if not isinstance(data, dict) or data.get("model") != self.model:
+        if not isinstance(data, dict) or data.get("model") != connection.response_model:
             raise ValueError("semantic_model_revision_mismatch")
         raw_answers = data.get("answers")
         if not isinstance(raw_answers, dict):
@@ -255,8 +341,8 @@ class JevObserver:
         return Observation(
             observation_id=str(uuid4()),
             snapshot=snapshot,
-            provider="typesafe",
-            model_revision=self.model,
+            provider=connection.name,
+            model_revision=connection.response_model,
             rubric_revision=REVISION,
             received_at=time.time(),
             answers=answers,

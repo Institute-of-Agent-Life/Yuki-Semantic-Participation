@@ -47,7 +47,7 @@ belief baseline，保存原始时长、编码量和 WAL。关闭 WAL 自动 chec
 | 部分 | 当前实现 | 验证与边界 |
 | --- | --- | --- |
 | 新观察 | 仅 human 焦点及 conversation；真实 human/self context | 无后台种子、seed_fit、新 recall/contact 候选或 claim/attempt |
-| Jev | 默认 jev-1.13.0，semantic-state-v3 / v6-zh-6 | 原生 model/state/questions；新投影尚无真实模型准确率结论 |
+| Jev | semantic-state-v3 / v6-zh-6；地址与模型名由调用方提供 | 原生 model/state/questions；新投影尚无真实模型准确率结论 |
 | 意愿投影 | 局部 engage 与可选 SELF scope intent，原队列取出时冻结 | quiet 不是真人 stop，歧义选项分别映射，未知不默认 stay |
 | 普通快路 | Main 不等待 Jev；原真人焦点可并行复核 | 已接纳不冒充已理解，不二次激活已接纳输入 |
 | 稀疏复核 | 唯一匹配普通续聊仅最新待评，统一 3/12/20 | 保 first_dirty；独立来源不误合并；首次不额外预等间隔 |

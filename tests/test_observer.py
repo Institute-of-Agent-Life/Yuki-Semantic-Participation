@@ -1,5 +1,6 @@
 import httpx
 import pytest
+from jev_factory import jev_observer
 from test_controller import SCOPE, event
 
 from yuki_participation.models import Snapshot
@@ -38,7 +39,7 @@ async def test_current_role_is_request_reference_and_does_not_rewrite_inflight_m
     snapshot = Snapshot(scope=SCOPE, focus=event(), context=(), issued_at=100, sequence=1)
     original = snapshot.model_dump_json()
     async with httpx.AsyncClient(transport=httpx.MockTransport(handle)) as client:
-        observer = JevObserver("synthetic-key", identity=identity, client=client)
+        observer = jev_observer("synthetic-key", identity=identity, client=client)
         first = await observer.evaluate(snapshot)
         old_body = bodies[0]
         second = await observer.evaluate(snapshot.model_copy(update={"sequence": 2}))
@@ -165,7 +166,7 @@ async def test_native_payload_probabilities_and_partial_invalid_dimensions():
         )
 
     async with httpx.AsyncClient(transport=httpx.MockTransport(handle)) as client:
-        observer = JevObserver(
+        observer = jev_observer(
             "synthetic-key", identity=lambda: {"display_name": "Yuki", "aliases": ()}, client=client
         )
         result = await observer.evaluate(
@@ -195,7 +196,7 @@ async def test_no_immediate_retry_on_rate_limit():
         return httpx.Response(429)
 
     async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
-        observer = JevObserver(
+        observer = jev_observer(
             "synthetic-key", identity=lambda: {"display_name": "Yuki", "aliases": ()}, client=client
         )
         with pytest.raises(httpx.HTTPStatusError):
@@ -205,15 +206,14 @@ async def test_no_immediate_retry_on_rate_limit():
     assert len(calls) == 1
 
 
-def test_missing_key_or_floating_model_is_not_ready():
+def test_missing_key_is_not_ready():
     with pytest.raises(ValueError):
-        JevObserver("", identity=lambda: {"display_name": "Yuki", "aliases": ()})
-    with pytest.raises(ValueError):
-        JevObserver(
-            "synthetic-key",
-            identity=lambda: {"display_name": "Yuki", "aliases": ()},
-            model="jev-latest",
-        )
+        jev_observer("", identity=lambda: {"display_name": "Yuki", "aliases": ()})
+    jev_observer(
+        "synthetic-key",
+        identity=lambda: {"display_name": "Yuki", "aliases": ()},
+        model="jev-latest",
+    )
 
 
 @pytest.mark.asyncio
@@ -239,7 +239,7 @@ async def test_malformed_usage_is_protocol_error_not_unhandled_attribute_error()
         )
 
     async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
-        observer = JevObserver(
+        observer = jev_observer(
             "synthetic-key", identity=lambda: {"display_name": "Yuki", "aliases": ()}, client=client
         )
         with pytest.raises(ValueError, match="semantic_usage_invalid"):
@@ -283,7 +283,7 @@ async def test_full_request_preserves_focus_context_and_reply_anchor():
         scope=SCOPE, focus=focus, context=(anchor, *extras), issued_at=100, sequence=1
     )
     async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
-        observer = JevObserver(
+        observer = jev_observer(
             "synthetic-key", identity=lambda: {"display_name": "Yuki", "aliases": ()}, client=client
         )
         result = await observer.evaluate(snapshot)
@@ -313,7 +313,7 @@ async def test_large_focus_or_anchor_reaches_the_real_provider_capacity(large_an
     context = (source,) if large_anchor else ()
     snapshot = Snapshot(scope=SCOPE, focus=focus, context=context, issued_at=101, sequence=1)
     async with httpx.AsyncClient(transport=httpx.MockTransport(reject)) as client:
-        observer = JevObserver(
+        observer = jev_observer(
             "synthetic-key", identity=lambda: {"display_name": "Yuki", "aliases": ()}, client=client
         )
         with pytest.raises(httpx.HTTPStatusError) as raised:
@@ -365,3 +365,57 @@ def test_missing_reply_anchor_stays_explicitly_unknown_in_projection():
     state = JevObserver._semantic_state(snapshot)
     assert state["focus"]["reply_to"] == "unavailable1"
     assert state["focus"]["reply_to_unavailable"] is True
+
+
+@pytest.mark.asyncio
+async def test_request_uses_the_connection_copied_at_entry():
+    import json
+
+    from yuki_participation.observer import SemanticConnection
+
+    seen = []
+
+    def answers_for(payload):
+        return {
+            name: {
+                "type": "choice",
+                "choice": "unknown",
+                "probabilities": {key: float(key == "unknown") for key in question["criteria"]},
+            }
+            for name, question in payload["questions"].items()
+        }
+
+    def handle(request):
+        payload = json.loads(request.content)
+        seen.append((str(request.url), payload["model"], request.headers["authorization"]))
+        observer.replace_connection(
+            SemanticConnection(
+                endpoint="https://semantic.example/next",
+                api_key="next-key",
+                request_model="request-b",
+                response_model="response-b",
+                timeout_seconds=12,
+                name="next",
+                revision="next",
+            )
+        )
+        return httpx.Response(200, json={"model": "response-a", "answers": answers_for(payload)})
+
+    snapshot = Snapshot(scope=SCOPE, focus=event(), context=(), issued_at=100, sequence=1)
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handle)) as client:
+        observer = jev_observer(
+            "first-key",
+            identity=lambda: {"display_name": "Yuki", "aliases": ()},
+            client=client,
+            endpoint="https://semantic.example/first",
+            request_model="request-a",
+            response_model="response-a",
+            name="first",
+            revision="first",
+        )
+        result = await observer.evaluate(snapshot)
+    assert seen == [
+        ("https://semantic.example/first", "request-a", "Bearer first-key"),
+    ]
+    assert result.provider == "first"
+    assert result.model_revision == "response-a"

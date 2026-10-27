@@ -5,6 +5,7 @@ import json
 
 import httpx
 import pytest
+from jev_factory import jev_observer
 from pydantic import ValidationError
 from test_controller import SCOPE, event, observation
 from test_participation_continuation import admitted, binding, report
@@ -22,7 +23,6 @@ from yuki_participation.models import (
     Snapshot,
     SourceRef,
 )
-from yuki_participation.observer import JevObserver
 from yuki_participation.participation import CHECKPOINT_KEY
 from yuki_participation.rubric import REVISION, questions
 from yuki_participation.self_report import SelfDelta, SelfReport, extract_tail
@@ -222,7 +222,7 @@ def test_real_encoder_projects_frozen_related_intent_and_existing_thread_map(eng
     assert c.observe_unit_hint(original, report(engage, at=101, response="intent"))
     source, _ = input_for(c, original, "focus", 2, admit=False)
     snapshot = freeze(c, source)
-    encoded = JevObserver(
+    encoded = jev_observer(
         "synthetic-not-a-credential", identity=lambda: {"display_name": "Yuki", "aliases": ()}
     )._encode_request(snapshot)
     payload = json.loads(encoded)
@@ -245,7 +245,7 @@ def test_real_encoder_projects_frozen_related_intent_and_existing_thread_map(eng
         report("quiet" if engage != "quiet" else "join", at=103, response="new-state", sequence=2),
     )
     assert (
-        JevObserver(
+        jev_observer(
             "synthetic-not-a-credential", identity=lambda: {"display_name": "Yuki", "aliases": ()}
         )._encode_request(snapshot)
         == original_bytes
@@ -514,7 +514,7 @@ def test_scope_self_report_and_local_quiet_both_reach_one_frozen_request():
     snapshot = freeze(c, focus)
     assert snapshot.participation.scope_intent.engage == "join"
     assert snapshot.participation.units[0].engage == "quiet"
-    payload = JevObserver(
+    payload = jev_observer(
         "synthetic-not-a-credential", identity=lambda: {"display_name": "Yuki", "aliases": ()}
     )._semantic_state(snapshot)
     assert payload["yuki_participation"]["scope_intent"]["engage"] == "join"
