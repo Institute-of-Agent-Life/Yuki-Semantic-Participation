@@ -4,6 +4,7 @@ import json
 
 import httpx
 import pytest
+from jev_factory import jev_observer
 
 from tests.test_controller import SCOPE, event
 from yuki_participation.controller import Controller
@@ -61,7 +62,7 @@ async def test_native_mentions_reach_real_http_payload_without_becoming_particip
         return httpx.Response(200, json={"model": "jev-1.13.0", "answers": answers})
 
     async with httpx.AsyncClient(transport=httpx.MockTransport(respond)) as client:
-        result = await JevObserver(
+        result = await jev_observer(
             "synthetic-key", identity=lambda: {"display_name": "Yuki", "aliases": ()}, client=client
         ).evaluate(original)
     sent = requests[0]["state"]["focus"]

@@ -24,8 +24,8 @@ Assignment／Presence ID 留在本地原 Snapshot。kind=yuki 明确提到当前
 未知账号不需要 Person，也不据此创建身份或授权。无提及字段的旧 Snapshot 表示未提供，
 不补查、不重写原已付请求；快照与独立存储的 serde 保原 ID 和原名称。
 
-Jev 使用原生 `model/state/questions → answers/usage`，默认模型 `jev-1.13.0`，
-rubric `v6-zh-6`。请求使用中性 eN/tN、原文、作者、关系、引用、相对时间和省略说明。
+Jev 使用原生 `model/state/questions → answers/usage`。地址、请求模型和必须对上的响应修订由调用方提供，本库不设默认版本。
+rubric 为 `v6-zh-6`。请求使用中性 eN/tN、原文、作者、关系、引用、相对时间和省略说明。
 scope、generation、revision、请求序号等本地管理字段不发送。
 Snapshot 保留 Host 实际提供的材料，DTO 不另加实验字节或条目帽；实际 Provider 容量错误正常返回，
 字节不是 token，token 只记录真实 usage。

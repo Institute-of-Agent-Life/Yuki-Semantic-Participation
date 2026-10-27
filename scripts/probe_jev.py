@@ -176,7 +176,17 @@ async def probe(cases: list[dict], observer: JevObserver) -> dict:
 
 async def run(args: argparse.Namespace, key: str) -> int:
     cases = load_cases(args.fixtures)
-    observer = JevObserver(key, identity=lambda: {"display_name": "Yuki", "aliases": ()})
+    endpoint = os.environ.get("SEMANTIC_PARTICIPATION_ENDPOINT", "")
+    model = os.environ.get("SEMANTIC_PARTICIPATION_MODEL", "")
+    if not endpoint or not model:
+        raise ValueError("semantic endpoint and model are not configured in this process")
+    observer = JevObserver(
+        key,
+        identity=lambda: {"display_name": "Yuki", "aliases": ()},
+        endpoint=endpoint,
+        request_model=model,
+        response_model=os.environ.get("SEMANTIC_PARTICIPATION_RESPONSE_MODEL") or None,
+    )
     try:
         report = await probe(cases[: args.limit], observer)
     finally:

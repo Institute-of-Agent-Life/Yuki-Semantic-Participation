@@ -1,12 +1,12 @@
 """Late feedback follows original input order, including equal source timestamps."""
 
 import pytest
+from jev_factory import jev_observer
 
 from tests.test_controller import event, observation
 from tests.test_participation_continuation import admitted, report
 from yuki_participation.controller import Controller, State
 from yuki_participation.models import Effect
-from yuki_participation.observer import JevObserver
 from yuki_participation.participation import CHECKPOINT_KEY
 
 
@@ -167,9 +167,11 @@ def test_learning_order_after_http_freeze_preserves_the_original_snapshot_and_ap
     actual = observation(source, act="extend_yuki")
     actual = actual.model_copy(update={"snapshot": controller.freeze_observation(actual.snapshot)})
     original_snapshot = actual.snapshot.model_dump_json()
-    observer = JevObserver.__new__(JevObserver)
-    observer.model = "fixture"
-    observer._identity = lambda: {"display_name": "Yuki", "aliases": ()}
+    observer = jev_observer(
+        "fixture-key",
+        identity=lambda: {"display_name": "Yuki", "aliases": ()},
+        model="fixture",
+    )
     encoded = observer._encode_request(actual.snapshot)
     assert not controller.observe_committed_event(source.model_copy(update={"source_order": 9}))
     assert controller.state.seen[source.ref.event_id].source_order == 9

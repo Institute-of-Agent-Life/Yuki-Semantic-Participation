@@ -2,10 +2,10 @@ import asyncio
 
 import httpx
 import pytest
+from jev_factory import jev_observer
 from test_controller import controller, event, observation
 
 from yuki_participation.controller import Controller
-from yuki_participation.observer import JevObserver
 from yuki_participation.session import ObservationSession
 from yuki_participation.store import SnapshotConflict, SnapshotStore
 
@@ -185,7 +185,7 @@ async def test_large_source_uses_real_provider_failure_and_health():
         return httpx.Response(429)
 
     async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
-        observer = JevObserver(
+        observer = jev_observer(
             "synthetic-key", identity=lambda: {"display_name": "Yuki", "aliases": ()}, client=client
         )
         session = ObservationSession(controller(), observer)
@@ -354,6 +354,32 @@ async def test_old_configuration_invalid_checkpoint_can_retry_without_resetting_
     assert not await restored.evaluate_due(137)
     assert await restored.evaluate_due(138)
     assert not restored.health.degraded and restored.health.failures == 0
+
+
+@pytest.mark.asyncio
+async def test_backoff_stays_with_the_connection_that_failed():
+    class Unavailable:
+        def __init__(self) -> None:
+            self.connection_revision = "connection-a"
+
+        def available(self) -> bool:
+            return True
+
+        async def evaluate(self, snapshot, **kwargs):
+            raise httpx.ConnectError("synthetic")
+
+    observer = Unavailable()
+    session = ObservationSession(controller(), observer)
+    queue_observation(session, event())
+    assert not await session.evaluate_due(130)
+    blocked = session.retry_after
+    assert blocked == 160
+    assert not await session.evaluate_due(159)
+    assert session.health.failures == 1
+    observer.connection_revision = "connection-b"
+    assert not await session.evaluate_due(159)
+    assert session.health.failures == 2
+    assert session.controller.state.observer_checkpoint["backoff_connection"] == "connection-b"
 
 
 def queue_observation(session, source):

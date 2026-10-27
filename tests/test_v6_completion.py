@@ -4,6 +4,7 @@ import math
 
 import httpx
 import pytest
+from jev_factory import jev_observer
 from test_core_review_regressions import controller, feedback, observation, propose, source
 
 from yuki_participation import dynamics
@@ -16,7 +17,6 @@ from yuki_participation.models import (
     Proposal,
     Snapshot,
 )
-from yuki_participation.observer import JevObserver
 from yuki_participation.participation import ParticipationUnit
 
 
@@ -317,7 +317,7 @@ async def test_observer_dynamic_unit_choice_maps_to_host_object_without_creating
         return httpx.Response(200, json={"model": "jev-1.13.0", "answers": answers})
 
     async with httpx.AsyncClient(transport=httpx.MockTransport(transport)) as client:
-        observer = JevObserver(
+        observer = jev_observer(
             "synthetic-not-a-credential",
             identity=lambda: {"display_name": "Yuki", "aliases": ()},
             client=client,
