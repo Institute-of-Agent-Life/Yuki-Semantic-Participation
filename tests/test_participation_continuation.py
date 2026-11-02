@@ -312,7 +312,7 @@ def test_bound_observation_dependencies_invalidate_unit_on_context_edit():
     c.observe_source_change(context.ref)
     # Only this hint used the context; the original unit admission did not.
     assert c.participating_units(104)[0].engage is None
-    assert c.state.host_checkpoint[CHECKPOINT_KEY]["units"]
+    assert c._participation_checkpoint().units
     focus = event("next", at=105)
     c.observe_committed_event(focus)
     assert c.participation_view(focus, 105).matched_unit is None
@@ -396,7 +396,7 @@ def test_semantic_correction_of_admitted_focus_cannot_match_old_unit_on_next_foc
     assert c.participating_units(105)[0].semantic_continuation == (corrected == "unknown")
     assert c.state.model_dump_json() == before_query
     assert c.state.effects[effect.effect_id] == before
-    assert c.state.host_checkpoint[CHECKPOINT_KEY]["expressions"]
+    assert c._participation_checkpoint().expressions
 
 
 @pytest.mark.parametrize("namespace_version", [1, 2])
@@ -416,7 +416,7 @@ def test_historical_wire_old_reader_load_save_keeps_namespace_and_other_host_key
     if namespace_version == 2:
         c.state.host_checkpoint[CHECKPOINT_KEY] = {"version": 2, "unknown": ["retained"]}
     c.state.host_checkpoint["outbound_threads"] = {"event:old": "old-thread"}
-    namespace = c.state.host_checkpoint[CHECKPOINT_KEY]
+    namespace = c.state.model_dump(mode="json")["host_checkpoint"][CHECKPOINT_KEY]
     database = tmp_path / "participation.sqlite3"
     save_historical_wire(database, c.state)
     paths = subprocess.check_output(
@@ -450,7 +450,7 @@ s.close()
     revision, state = store.load(SCOPE)
     store.close()
     assert revision == 2
-    assert state.host_checkpoint[CHECKPOINT_KEY] == namespace
+    assert state.model_dump(mode="json")["host_checkpoint"][CHECKPOINT_KEY] == namespace
     assert state.host_checkpoint["outbound_threads"] == {"event:old": "old-thread"}
     restored = Controller.restore(state, max(110, state.now))
     if namespace_version == 1 and not retired:
@@ -498,7 +498,7 @@ def test_fifty_continuations_keep_establishment_binding_and_each_actual_effect_b
         )
         assert c.observe_unit_expression(actual, f"run-{index}", effect)
         bindings[effect.effect_id] = actual.model_dump(mode="json")
-        namespace = c.state.host_checkpoint[CHECKPOINT_KEY]
+        namespace = c.state.model_dump(mode="json")["host_checkpoint"][CHECKPOINT_KEY]
         unit = next(iter(namespace["units"].values()))
         assert unit["binding"] == origin.model_dump(mode="json")
         assert unit["input_ref"] == focus.ref.model_dump(mode="json")
@@ -509,14 +509,14 @@ def test_fifty_continuations_keep_establishment_binding_and_each_actual_effect_b
             _, restored = store.load(SCOPE)
             store.close()
             c = Controller.restore(restored, focus.at, parameters=c.parameters)
-    namespace = c.state.host_checkpoint[CHECKPOINT_KEY]
+    namespace = c.state.model_dump(mode="json")["host_checkpoint"][CHECKPOINT_KEY]
     assert {k: v["binding"] for k, v in namespace["expressions"].items()} == bindings
     assert len(c.state.effects) == 50
     assert all(record.effect.actual_targets == ("group",) for record in c.state.effects.values())
     # An intermediate input was not used by the current admission/hint or the origin.
     c.observe_source_change(SourceRef(event_id="next-10", revision=1))
     assert c.participating_units(156)[0].engage == "stay"
-    assert "send-10" not in c.state.host_checkpoint[CHECKPOINT_KEY]["expressions"]
+    assert "send-10" not in c._participation_checkpoint().expressions
     assert "send-10" in c.state.effects  # The actual transport receipt remains historical.
 
 

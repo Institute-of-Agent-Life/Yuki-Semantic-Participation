@@ -19,6 +19,57 @@ def tick(controller, now):
     controller.advance(now, controller_epoch=controller.state.epoch, host_available=False)
 
 
+def test_withdrawn_continuation_remains_proof_until_independent_input(tmp_path):
+    c, origin, established = admitted()
+    old, current = event("withdrawn", at=101), event("current", at=102)
+    for focus in (old, current):
+        assert c.observe_committed_event(focus)
+        actual = established.model_copy(update={"basis": (origin.ref, focus.ref)})
+        assert c.observe_unit_input(actual, focus.ref, continuation=True)
+    c.observe_source_change(old.ref)
+    tick(c, 103)
+    unit = c._participation_checkpoint().units[c._unit_key("topic", "A")]
+    assert unit.continuation_refs == (old.ref, current.ref)
+    old_basis = established.model_copy(update={"basis": (origin.ref, old.ref)})
+    assert not c.observe_unit_hint(old_basis, report("quiet", at=102))
+    store = SnapshotStore(tmp_path / "retired.sqlite3")
+    store.save(c.state, expected_revision=0)
+    _, restored = store.load(SCOPE)
+    store.close()
+    restored_controller = Controller.restore(restored, 103)
+    unit = restored_controller._participation_checkpoint().units[c._unit_key("topic", "A")]
+    assert unit.continuation_refs == (old.ref, current.ref)
+    assert not restored_controller._unit_ref_valid(old.ref, unit)
+    assert not restored_controller.observe_unit_hint(old_basis, report("quiet", at=102))
+    independent = event("independent", at=104)
+    assert restored_controller.observe_committed_event(independent)
+    assert restored_controller.observe_unit_input(binding(independent), independent.ref)
+    unit = restored_controller._participation_checkpoint().units[c._unit_key("topic", "A")]
+    assert unit.binding.basis == (independent.ref,)
+    assert unit.continuation_refs == ()
+
+
+def test_withdrawn_review_source_keeps_equal_time_order_for_replacement():
+    c, origin, established = admitted()
+    first, later = event("review-first", at=100), event("review-later", at=100)
+    for focus in (first, later):
+        assert c.observe_committed_event(focus)
+        actual = established.model_copy(update={"basis": (origin.ref, focus.ref)})
+        assert c.observe_unit_input(actual, focus.ref, continuation=True)
+        if focus == first:
+            assert c.apply_semantic_observation(observation(focus))
+    c.observe_source_change(first.ref)
+    tick(c, 101)
+    unit = c._participation_checkpoint().units[c._unit_key("topic", "A")]
+    assert unit.review.source == first.ref
+    assert first.ref in unit.continuation_refs
+    assert c.apply_semantic_observation(observation(later))
+    assert c._participation_checkpoint().units[c._unit_key("topic", "A")].review.source == later.ref
+    tick(c, 102)
+    unit = c._participation_checkpoint().units[c._unit_key("topic", "A")]
+    assert first.ref in unit.continuation_refs
+
+
 @pytest.mark.parametrize("intent", [None, "stay", "quiet"])
 @pytest.mark.parametrize("flow", ["continuous", "paused"])
 def test_real_unit_survives_raw_retirement_and_store_reopen(tmp_path, intent, flow):
@@ -78,7 +129,7 @@ def test_resource_retirement_preserves_unit_but_not_raw_or_every_old_receipt():
     tick(c, 1800)
     assert not c.state.events
     assert set(c.state.effects) == {"effect-270"}
-    assert set(c.state.host_checkpoint[CHECKPOINT_KEY]["expressions"]) == {"effect-270"}
+    assert set(c._participation_checkpoint().expressions) == {"effect-270"}
     assert len(c.state.seen) == 2  # Origin and the last actual admission/expression source.
 
 
@@ -168,26 +219,81 @@ def test_arbitrary_seen_fingerprint_is_not_a_live_source_or_unit_establishment()
     assert not c.state.candidates
 
 
-def test_fingerprint_resource_pressure_retires_derived_units_before_rejecting_new_input():
-    c, _, _ = admitted()
-    for index in range(64):
-        now = 1000 + index * 700
-        tick(c, now)
-        sources = [event(f"basis-{index}-{i}", at=now + i) for i in range(16)]
-        for source in sources:
-            assert c.observe_committed_event(source)
-        actual = binding(sources[-1], thread=f"topic-{index}", basis=tuple(s.ref for s in sources))
-        assert c.observe_unit_input(actual, sources[-1].ref)
-    tick(c, now + 700)
+def test_current_relation_survives_more_than_1024_referenced_sources(tmp_path):
+    c, origin, established = admitted()
+    assert c.observe_unit_hint(established, report("stay", at=origin.at))
+    effect = Effect(effect_id="original-message", kind="message", at=origin.at)
+    assert c.observe_unit_expression(established, "original-run", effect)
+    first = None
+    for index in range(1, 1024):
+        current = event(f"continuation-{index}", at=100 + index / 100)
+        assert c.observe_committed_event(current)
+        actual = established.model_copy(update={"basis": (origin.ref, current.ref)})
+        assert c.observe_unit_input(actual, current.ref, continuation=True)
+        first = first or current
+
     assert len(c.state.seen) == 1024
-    fresh = event("new-actual-source", at=now + 701)
+    fresh = event("next-continuation", at=111)
     assert c.observe_committed_event(fresh)
-    assert len(c.state.seen) <= 1024
-    assert len(c.participating_units(fresh.at)) == 63
-    assert not c.state.capacity_blocked
-    oldest = SourceRef(event_id="basis-0-0", revision=1)
-    assert not c._valid(oldest)
-    assert oldest.event_id not in c.state.seen
+    assert c.participation_view(fresh, fresh.at).matched_unit is not None
+    actual = established.model_copy(update={"basis": (origin.ref, fresh.ref)})
+    assert c.observe_unit_input(actual, fresh.ref, continuation=True)
+    assert first is not None
+    c.observe_source_change(first.ref)
+    assert not c.observe_unit_hint(
+        established.model_copy(update={"basis": (origin.ref, first.ref)}),
+        report("quiet", at=fresh.at),
+    )
+
+    store = SnapshotStore(tmp_path / "many-sources.sqlite3")
+    try:
+        store.save(c.state, expected_revision=0)
+        _, state = store.load(SCOPE)
+    finally:
+        store.close()
+    restored = Controller.restore(state, fresh.at)
+    unit = restored._participation_checkpoint().units[restored._unit_key("topic", "A")]
+    assert first.ref in unit.continuation_refs
+    assert not restored._unit_ref_valid(first.ref, unit)
+    assert restored.state.effects[effect.effect_id].effect == effect
+    after = event("after-reopen", at=112)
+    assert restored.observe_committed_event(after)
+    assert restored.participation_view(after, after.at).matched_unit is not None
+
+
+def test_current_relations_and_effects_survive_more_than_64_units(tmp_path):
+    c = Controller(SCOPE, 100)
+    for index in range(65):
+        person = f"person-{index}"
+        source = event(f"source-{index}", at=100 + index / 100).model_copy(
+            update={"thread": f"topic-{index}", "author": person, "target": person}
+        )
+        assert c.observe_committed_event(source)
+        actual = binding(source)
+        assert c.observe_unit_input(actual, source.ref)
+        assert c.observe_unit_expression(
+            actual,
+            f"run-{index}",
+            Effect(effect_id=f"message-{index}", kind="message", at=source.at),
+        )
+    assert len(c.participating_units(101)) == 65
+    tick(c, 1000)
+
+    store = SnapshotStore(tmp_path / "many-units.sqlite3")
+    try:
+        store.save(c.state, expected_revision=0)
+        _, state = store.load(SCOPE)
+    finally:
+        store.close()
+    restored = Controller.restore(state, 1000)
+    assert len(restored.participating_units(1000)) == 65
+    assert restored.state.effects["message-0"].effect.kind == "message"
+    fresh = event("next-for-oldest", at=1001).model_copy(
+        update={"thread": "topic-0", "author": "person-0", "target": "person-0"}
+    )
+    assert restored.observe_committed_event(fresh)
+    matched = restored.participation_view(fresh, fresh.at).matched_unit
+    assert matched is not None and matched.unit.thread == "topic-0" and matched.expressed
 
 
 def different_unit_review(c, source):
@@ -220,7 +326,7 @@ def test_old_reader_fold_and_unrelated_stop_seen_do_not_resurrect_unknown_unit(
         pytest.skip("Frozen old reader git object is unavailable in this checkout")
     c, source, established = admitted()
     assert c.observe_unit_hint(established, report("stay"))
-    legacy_units = c.state.host_checkpoint[CHECKPOINT_KEY]["units"]
+    legacy_units = c.state.model_dump(mode="json")["host_checkpoint"][CHECKPOINT_KEY]["units"]
     raw = different_unit_review(c, source)
     stop = event("other-stop", at=110).model_copy(
         update={"thread": "other-thread", "author": "B", "target": "B"}
@@ -231,7 +337,9 @@ def test_old_reader_fold_and_unrelated_stop_seen_do_not_resurrect_unknown_unit(
         # Actual pre-fix namespaces kept invalid units and had no retirement proof.
         for value in legacy_units.values():
             value.pop("retired_refs", None)
-        c.state.host_checkpoint[CHECKPOINT_KEY]["units"] = legacy_units
+        namespace = c.state.model_dump(mode="json")["host_checkpoint"][CHECKPOINT_KEY]
+        namespace["units"] = legacy_units
+        c.state.host_checkpoint[CHECKPOINT_KEY] = namespace
     save_historical_wire(tmp_path / "state.sqlite3", c.state)
     paths = subprocess.check_output(
         ["git", "ls-tree", "-r", "--name-only", revision, "src/yuki_participation"], text=True
@@ -283,7 +391,7 @@ def test_late_real_feedback_cannot_reestablish_reinterpreted_unit(feedback):
         receipt = Effect(effect_id="actually-delivered", kind="message", at=111)
         assert c.observe_unit_expression(established, "original-run", receipt)
         assert c.state.effects[receipt.effect_id].effect == receipt
-        assert receipt.effect_id in c.state.host_checkpoint[CHECKPOINT_KEY]["expressions"]
+        assert receipt.effect_id in c._participation_checkpoint().expressions
         assert c.observe_unit_expression(established, "original-run", receipt)
         assert len(c.state.effects) == 1
     assert not c.participating_units(112)[0].semantic_continuation

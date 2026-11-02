@@ -90,9 +90,17 @@ def aggregate_attention(sources: list[tuple[float, float, float]], now: float, t
     for left, right in zip(boundaries, boundaries[1:], strict=False):
         count = max(1, math.ceil((right - left) / 0.125))
         dt = (right - left) / count
+        active = [(w, at) for w, at, issued in sources if max(at, issued) <= left]
         for index in range(count):
             t = left + (index + 0.5) * dt
-            u = stimulus([(w, at) for w, at, issued in sources if max(at, issued) <= t], t, tau)
+            # Very large timestamps can round a midpoint onto the right boundary.
+            # Preserve the original predicate there, including source ordering.
+            current = (
+                active
+                if t < right
+                else [(w, at) for w, at, issued in sources if max(at, issued) <= t]
+            )
+            u = stimulus(current, t, tau)
             value = attention(value, u, dt)
     return value
 

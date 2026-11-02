@@ -322,14 +322,7 @@ class JevObserver:
             raise ValueError("semantic_usage_invalid")
         selection = answers.get("unit_selection")
         resolved = None
-        if (
-            selection
-            and selection.choice != "unknown"
-            and sum(
-                p == max(selection.probabilities.values()) for p in selection.probabilities.values()
-            )
-            == 1
-        ):
+        if selection and selection.choice != "unknown" and selection.has_unique_maximum():
             resolved = next(
                 (
                     option

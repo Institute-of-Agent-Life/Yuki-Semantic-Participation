@@ -97,6 +97,10 @@ class Choice(Record):
     def p(self, key: str) -> float:
         return self.probabilities.get(key, 0.0)
 
+    def has_unique_maximum(self) -> bool:
+        maximum = max(self.probabilities.values())
+        return sum(value == maximum for value in self.probabilities.values()) == 1
+
 
 class EngageIntent(Record):
     engage: Literal["join", "stay", "quiet"]

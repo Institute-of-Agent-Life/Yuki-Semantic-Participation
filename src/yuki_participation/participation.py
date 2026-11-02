@@ -2,14 +2,30 @@
 
 from __future__ import annotations
 
-from typing import Literal
+from collections.abc import Iterable, Mapping
+from dataclasses import dataclass
+from typing import Any, Literal, Self
 
-from pydantic import Field, model_validator
+from pydantic import Field, field_validator, model_validator
 
 from .models import Choice, Record, Scope, SourceRef, Timestamp
 from .self_report import SelfReport
 
 CHECKPOINT_KEY = "participation_v1"
+
+
+class _RetiredRefs(tuple[SourceRef, ...]):
+    """Ordered original references with a derived, non-persisted membership index."""
+
+    _members: frozenset[SourceRef]
+
+    def __new__(cls, values: Iterable[SourceRef]) -> Self:
+        result = super().__new__(cls, values)
+        result._members = frozenset(result)
+        return result
+
+    def __contains__(self, value: object) -> bool:
+        return value in self._members
 
 
 class ParticipationUnit(Record):
@@ -57,6 +73,16 @@ class UnitState(Record):
     # They never grant, spend or replenish continuation permission.
     continuation_refs: tuple[SourceRef, ...] = ()
     review: UnitSemanticReview | None = None
+
+    @field_validator("retired_refs", mode="after")
+    @classmethod
+    def index_retired_refs(cls, value: tuple[SourceRef, ...]) -> tuple[SourceRef, ...]:
+        return _RetiredRefs(value)
+
+    def model_copy(self, *, update: Mapping[str, Any] | None = None, deep: bool = False) -> Self:
+        if update is not None and "retired_refs" in update:
+            update = {**update, "retired_refs": _RetiredRefs(update["retired_refs"])}
+        return super().model_copy(update=update, deep=deep)
 
     @model_validator(mode="before")
     @classmethod
@@ -109,3 +135,30 @@ class ParticipationView(Record):
     candidates: tuple[UnitParticipation, ...] = ()
     ambiguous: bool = False
     needs_observation: bool = True
+
+
+@dataclass(frozen=True, slots=True)
+class UnitHintFact:
+    engage: Literal["join", "stay", "quiet"] | None
+    source: SourceRef | None
+    basis: tuple[SourceRef, ...]
+    at: float
+    sequence: int
+
+
+@dataclass(frozen=True, slots=True)
+class UnitReviewFact:
+    interaction: str | None
+    floor: str | None
+    source: SourceRef
+    at: float
+    source_order: int | None
+    sequence: int
+    boundary_scope: str | None
+
+
+@dataclass(frozen=True, slots=True)
+class UnitContextFact:
+    actor: str
+    hint: UnitHintFact | None
+    review: UnitReviewFact | None

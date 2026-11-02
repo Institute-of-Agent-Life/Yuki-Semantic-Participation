@@ -97,9 +97,9 @@ Host canonical 入账、版本与授权
 新鲜 effect 沿原身份入账，不逐条执行全局裁剪；原 advance 统一维护资源窗口。
 反馈超过原窗口且没有近期效果时退休，包括未收到终态的 accepted；旧 pending 若已引用
 该接纳则一并让出。没有接纳证据的 pending 仍按原 Host 查询合同处理，实际 Work 由 Host 持有。
-一次裁剪只解析一次当前 participation checkpoint，退休折叠和最终清理共用该 typed 值；
+已知 participation checkpoint 以内存中的唯一 typed 值运行，退休折叠和最终清理共用该值；
 正常回放只有内容变化才序列化写回；restore 仍一次写回已有 schema 迁移，未知 namespace 原样保留。
-原快照容量、详细事实窗口和关系退休规则不变。
+快照不再按经验字节数拒绝保存，详细事实窗口和关系退休规则不因此改变。
 
 Proposal 是机会，不是发送命令或工具许可。Host 仍核验来源、停止、Space/Presence、
 scope/generation、owner/epoch 与真实权限，原 Work 容量沿原调度处理。
@@ -202,7 +202,8 @@ RECALL/CONTACT 枚举只读历史提议，不进入新观察或采样。
 正文最多 600 秒、256 条/256 KiB，裁剪不等于交流自动过期；必要 seen/source_order、
 retired_refs、当前意愿、最小表达及复核依据随原单元保留。
 真实修改/撤回继续撤销来源，quiet 与实际关闭不因裁剪或重启解除。
-64 单元/1024 来源身份是原资源边界，优先清退旧派生关系，不保留无限正文或拒收新业务。
+仍有消费者的单元与来源身份不按固定数量淘汰；详细正文窗口及真实来源撤销仍各按原规则处理。
+需要的来源证明和折叠信念可以随真实事实增长，旧 baseline_evictions 仅保留为历史记录。
 缺退休证明不凭任意 seen 指纹复活关系；旧 reader 不认识的数据不作为新资格。
 未知扩展 namespace 保持原件且禁止写回。既有 `continuation_current` 单次读取仍可按原版本、
 actor、来源修订和退休证明识别原单元；这保留已有读合同，不把未知扩展普遍当作新资格。
@@ -218,6 +219,5 @@ actor、来源修订和退休证明识别原单元；这保留已有读合同，
 
 回退优先使用兼容新格式的修复镜像。已有新输入、执行或投递事实时，不能恢复旧数据库覆盖它们。
 固定旧 reader 读写 namespace 的专项测试不等于任意旧镜像都可安全回退。
-SnapshotStore 是同步单线程 SQLite CAS，不跨线程共享连接，不在事务内等外部工作；
-它的容量检查仍在写事务内聚合 payload 大小，不声称事务中完全无扫描。
+SnapshotStore 是同步单线程 SQLite CAS，不跨线程共享连接，不在事务内等外部工作或聚合快照大小。
 本库不实现 QQ、远程发送、多租户认证或独立 Agent Runtime。

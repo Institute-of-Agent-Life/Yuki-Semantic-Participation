@@ -16,14 +16,10 @@ class SnapshotConflict(RuntimeError):
 
 
 class SnapshotStore:
-    def __init__(
-        self, path: Path, *, per_scope_bytes: int = 1024 * 1024, total_bytes: int = 16 * 1024 * 1024
-    ) -> None:
+    def __init__(self, path: Path) -> None:
         path.parent.mkdir(parents=True, exist_ok=True)
         self.connection = sqlite3.connect(path, timeout=5, isolation_level=None)
         self.connection.execute("PRAGMA journal_mode=WAL")
-        self.per_scope_bytes = per_scope_bytes
-        self.total_bytes = total_bytes
         try:
             self._initialize()
         except BaseException:
@@ -41,6 +37,19 @@ class SnapshotStore:
             raise ValueError("snapshot_storage_format")
         if old:
             self._migrate()
+        elif head:
+            head_columns = {
+                r[1] for r in self.connection.execute("PRAGMA table_info(snapshot_head)")
+            }
+            body_columns = {
+                r[1] for r in self.connection.execute("PRAGMA table_info(snapshot_body)")
+            }
+            head_size = "logical_bytes" in head_columns
+            body_size = "logical_size_delta" in body_columns
+            if head_size != body_size:
+                raise ValueError("snapshot_storage_format")
+            if head_size:
+                self._migrate_pair()
         elif not head:
             self.connection.execute("BEGIN IMMEDIATE")
             try:
@@ -53,11 +62,29 @@ class SnapshotStore:
     def _create(self) -> None:
         self.connection.execute("""CREATE TABLE snapshot_head(
             scope TEXT NOT NULL,generation INTEGER NOT NULL,revision INTEGER NOT NULL,
-            progress BLOB NOT NULL,logical_bytes INTEGER NOT NULL,
+            progress BLOB NOT NULL,
             PRIMARY KEY(scope,generation))""")
         self.connection.execute("""CREATE TABLE snapshot_body(
             scope TEXT NOT NULL,generation INTEGER NOT NULL,body BLOB NOT NULL,
-            logical_size_delta INTEGER NOT NULL,PRIMARY KEY(scope,generation))""")
+            PRIMARY KEY(scope,generation))""")
+
+    def _migrate_pair(self) -> None:
+        """Remove size bookkeeping, retaining each existing pair and its exact bytes."""
+        self.connection.execute("BEGIN IMMEDIATE")
+        try:
+            self.connection.execute("ALTER TABLE snapshot_head RENAME TO snapshot_head_old")
+            self.connection.execute("ALTER TABLE snapshot_body RENAME TO snapshot_body_old")
+            self._create()
+            self.connection.execute("""INSERT INTO snapshot_head(scope,generation,revision,progress)
+                SELECT scope,generation,revision,progress FROM snapshot_head_old""")
+            self.connection.execute("""INSERT INTO snapshot_body(scope,generation,body)
+                SELECT scope,generation,body FROM snapshot_body_old""")
+            self.connection.execute("DROP TABLE snapshot_head_old")
+            self.connection.execute("DROP TABLE snapshot_body_old")
+            self.connection.execute("COMMIT")
+        except BaseException:
+            self.connection.execute("ROLLBACK")
+            raise
 
     def _migrate(self) -> None:
         from .snapshot_v1 import LegacyState
@@ -72,8 +99,7 @@ class SnapshotStore:
             if legacy.scope != key:
                 raise ValueError("snapshot_scope_mismatch")
             frozen = freeze(cast(State, legacy))
-            length = len(payload.encode("utf-8")) if isinstance(payload, str) else len(payload)
-            prepared.append((scope, generation, revision, frozen, length))
+            prepared.append((scope, generation, revision, frozen))
         expected = {(scope, generation, revision) for scope, generation, revision, _ in rows}
         self.connection.execute("BEGIN IMMEDIATE")
         try:
@@ -83,14 +109,14 @@ class SnapshotStore:
             if current != expected:
                 raise SnapshotConflict("snapshot_changed")
             self._create()
-            for scope, generation, revision, value, length in prepared:
+            for scope, generation, revision, value in prepared:
                 self.connection.execute(
-                    "INSERT INTO snapshot_head VALUES(?,?,?,?,?)",
-                    (scope, generation, revision, value.progress, length),
+                    "INSERT INTO snapshot_head VALUES(?,?,?,?)",
+                    (scope, generation, revision, value.progress),
                 )
                 self.connection.execute(
-                    "INSERT INTO snapshot_body VALUES(?,?,?,?)",
-                    (scope, generation, value.body, value.logical_size_delta),
+                    "INSERT INTO snapshot_body VALUES(?,?,?)",
+                    (scope, generation, value.body),
                 )
             self.connection.execute("DROP TABLE snapshots")
             self.connection.execute("COMMIT")
@@ -125,39 +151,29 @@ class SnapshotStore:
         try:
             row = self.connection.execute(
                 """WITH wanted(scope,generation) AS (VALUES(?,?))
-                SELECT h.revision,h.logical_bytes,b.logical_size_delta FROM wanted w
+                SELECT h.revision,b.scope FROM wanted w
                 LEFT JOIN snapshot_head h USING(scope,generation)
                 LEFT JOIN snapshot_body b USING(scope,generation)""",
                 key,
             ).fetchone()
             if (row[0] if row[0] is not None else 0) != expected_revision:
                 raise SnapshotConflict("snapshot_changed")
-            if (row[0] is None) != (row[2] is None):
+            if (row[0] is None) != (row[1] is None):
                 raise ValueError("snapshot_storage_pair")
-            delta = value.logical_size_delta if value.body is not None else row[2]
-            if delta is None:
+            if value.body is None and row[1] is None:
                 raise ValueError("snapshot_body_missing")
-            length = delta + len(value.progress)
-            if length > self.per_scope_bytes:
-                raise ValueError("scope_snapshot_capacity")
-            used = self.connection.execute(
-                "SELECT coalesce(sum(logical_bytes),0) FROM snapshot_head"
-            ).fetchone()[0]
-            if used - (row[1] or 0) + length > self.total_bytes:
-                raise ValueError("global_snapshot_capacity")
             revision = expected_revision + 1
             if value.body is not None:
                 self.connection.execute(
-                    """INSERT INTO snapshot_body VALUES(?,?,?,?)
-                    ON CONFLICT(scope,generation) DO UPDATE SET body=excluded.body,
-                    logical_size_delta=excluded.logical_size_delta""",
-                    (*key, value.body, delta),
+                    """INSERT INTO snapshot_body VALUES(?,?,?)
+                    ON CONFLICT(scope,generation) DO UPDATE SET body=excluded.body""",
+                    (*key, value.body),
                 )
             self.connection.execute(
-                """INSERT INTO snapshot_head VALUES(?,?,?,?,?)
+                """INSERT INTO snapshot_head VALUES(?,?,?,?)
                 ON CONFLICT(scope,generation) DO UPDATE SET revision=excluded.revision,
-                progress=excluded.progress,logical_bytes=excluded.logical_bytes""",
-                (*key, revision, value.progress, length),
+                progress=excluded.progress""",
+                (*key, revision, value.progress),
             )
             self.connection.execute("COMMIT")
         except BaseException:
@@ -172,7 +188,7 @@ class SnapshotStore:
         try:
             row = self.connection.execute(
                 """WITH wanted(scope,generation) AS (VALUES(?,?))
-                SELECT h.revision,b.logical_size_delta FROM wanted w
+                SELECT h.revision,b.scope FROM wanted w
                 LEFT JOIN snapshot_head h USING(scope,generation)
                 LEFT JOIN snapshot_body b USING(scope,generation)""",
                 key,

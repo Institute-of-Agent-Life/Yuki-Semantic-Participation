@@ -1,6 +1,6 @@
 # 语义参与实施状态
 
-2026-10-26。本文描述当前开发修订；确切依赖以 Host pin、lock 和实际安装一致的修订为准。
+2026-11-03。本文描述当前开发修订；确切依赖以 Host pin、lock 和实际安装一致的修订为准。
 双仓库 CI、PR、合并、镜像、部署和自然流量验收分别记录；当前正文不预填尚未发生的发布结果。
 
 2026-10-26：原数学逐 tick、sample_sequence、哈希流及参数恢复规则保留；同次评分共享
@@ -8,15 +8,17 @@ eligible groups/pressure，feedback prune 先一次归集近期 run，删除逐�
 queue 与 observer checkpoint 只有真实变化才重建，maintain/ready/next_due 分离本地清理和请求准备。
 
 SnapshotStore 将同一 State 物理拆为 snapshot_head 与 snapshot_body，单 owner、单 revision CAS。
-热区是原数值与游标，last_action 也在热区；原 dict 顺序或成员变化写冷体。原 1/16 MiB 逻辑容量
-由完整编码长度减 typed 热长度的 K 保留。Host 持有原保存锁后冻结 bytes，Store 不再进行完整
-State 的解析/再编码。一次 key LEFT JOIN 区分不存在与半对损坏，不补造空状态。
+热区是原数值与游标，last_action 也在热区；原 dict 顺序或成员变化写冷体。Host 持有原保存锁后冻结
+bytes，冷体只编码一次，Store 不再进行完整 State 的解析/再编码或按经验容量拒绝保存。一次 key
+LEFT JOIN 区分不存在与半对损坏，不补造空状态。旧两表移除大小列时原子保留原 bytes 与 revision；
 旧 snapshots 升级按固定旧 schema 在事务外准备，单事务切换，不进行 restore/advance/prune；
 原 revision、抽样序号、已接纳 proposal/run/receipt 和未知 Host 扩展保持。
+旧两表存在孤行时原样迁移，损坏 scope 仍在读取或写入时报告，其他 scope 不受影响。删除大小列后
+旧版 Store 无法读取新布局；回退需停写并先用可靠转换处理当前数据库，不能以旧备份覆盖新回执。
 
 `tests/test_progress_equivalence.py` 从 git pin 79d266 载入真实旧实现，对照相同 UUID、输入、
 逐 tick、参数热更及冷恢复，逐步比较全部 38 字段及冷热往返。存储回归另覆盖 typed 数值 token、
-容量、布局顺序、半对、CAS、迁移与中断回滚。没有付费请求或线上数据。
+大快照、布局顺序、半对、CAS、迁移与中断回滚。没有付费请求或线上数据。
 
 [本地合成开销](research/narrow-snapshot-cost-20261026.json)使用原 Host 的完整编码→adapter
 解析 State→Store 再编码路径，对照新 freeze→Store bytes；两边都运行真实 advance，均不计
@@ -29,8 +31,13 @@ belief baseline，保存原始时长、编码量和 WAL。关闭 WAL 自动 chec
 真实执行、预算和发送回执保留在 Host 领域账本，过时刹车不要求冷恢复逐条补齐。
 新鲜 effect 仅入账，由原 advance 统一整理；过期且无近期效果的反馈不再等待终态信号才退休，
 避免 accepted 残留占住控制器容量。原待确认接纳与 Host 中实际运行的 Work 不因此删除或重跑。
-没有新增批次机制、持久去重账本或跨调用缓存。同次整理只解析一次参与 checkpoint，
-退休折叠和最终清理完成后仅内容变化才序列化保存。restore 仍一次写回已有 schema 迁移，
+没有新增批次机制或持久去重账本。已知版本的参与 checkpoint 在内存中保留唯一类型化权威值，
+退休引用有按原顺序值派生的成员索引；已完成退休的来源和表达键用于省去无变化的重复折叠，
+相关原事实变化或回放边界实际跨源时失效并重算，不作为资格证据。退休折叠和最终清理完成后
+仅内容变化才序列化保存。单元的续聊原件仍按原顺序保留，所需成员、最后位置与同 event 最新 ref
+由 owner 维护派生索引；真实追加只增量更新索引，整体替换或恢复时重建。原 tuple 追加及必须提交的
+冷体编码仍随原件长度增长。普通接纳按当前 Person family 的原 target、表达、锚点与边界定位相关事实，
+在原判定边界重算资格；索引和准备材料都不是许可。restore 仍一次写回已有 schema 迁移，
 未知扩展保留。此处记录源码行为，验证及跨仓交付以实际结果另记。
 
 2026-10-22：同人自动续聊取消复核额度，后台只合并唯一匹配的普通续聊待办，
@@ -59,7 +66,11 @@ belief baseline，保存原始时长、编码量和 WAL。关闭 WAL 自动 chec
 | 旧状态 | 清 seed 正文/派生键，保 human/self、真实运行和回执 | 一次清退废计数，保原 quiet/review/来源；旧 accepted recall/contact 保原 W/E/R/compute |
 | 恢复 | 原 SQLite CAS、原 proposal/run、预算与效果 | pending 先查 Host，未知不换 ID，确认未接纳才退役 |
 | 诊断 | 实际 Snapshot/Observation、usage 与覆盖分别计量 | trace 不是 HTTP 抓包；缺缓存字段不估算命中率，哈希不能证明成本 |
-| 查询成本 | 删除未使用的 belief 展示；批量读取复用当前 typed checkpoint，动作/锚点按原单元或 run 聚合 | 索引仅活在当前同步调用内；不持久化、不跨变更缓存，不修改真实概率公式 |
+| 查询成本 | 已知参与状态以唯一 typed checkpoint 运行；owner 维护来源、人物关系、锚点与续聊位置等必要派生索引 | 索引不持久化、不授予资格，随原事实更新或恢复时重建；时间、来源和概率按当前事实判断 |
+
+Host 自有映射的单键事实可通过 `set_host_mapping_entry` 原位更新；只有值真实改变才标记冷体待保存，
+冻结仍由既有保存边界负责，其他 namespace 保持原样。`participation_own_basis` 按原人物和目标索引
+读取当前关系的原始来源，不将索引结果作为资格；旧 wire 中非规范 unit 键和同组顺序仍可读取。
 
 2026-10-16 的性能回归使用合成的 8/32 个讨论单元、已退休原来源、真实类型表达回执和
 非空候选，按验证/遍历次数检查参与查询、冻结、接纳、评分和退休折叠，避免依赖机器速度阈值。
@@ -84,8 +95,19 @@ belief baseline，保存原始时长、编码量和 WAL。关闭 WAL 自动 chec
 统一 3/12/20 秒分别为去抖/最小调用间隔/最长去抖等待，不是固定周期或端到端刹车上限。
 未评分 conversation 仍在源事件后 75 秒到期，合格观察在源事件后 90 秒内完成；
 这些是已有源有效性规则，本轮不把它们新增为发送或任务门槛。
-快照默认每 scope 1 MiB、总计 16 MiB；原 64 单元/1024 来源资源回收边界继续生效。
-continuation_refs 仅保原来源证据，持续输入仍受原来源退休/派生关系回收约束，不声称无限 O(1)。
+快照保存不以经验字节数拒绝；真实有效的关系和仍被消费的来源不再按固定单元数或 seen 数量淘汰。
+continuation_refs、退休证明和顺序按实际消费者保留；真实来源撤销和详细 replay 窗口仍各按原规则处理。
+必要来源的内存、原 tuple 追加与冷体编码会随其事实数量增长，不声称持续输入为无限 O(1)。
+已持久化的 baseline_evictions 保留历史值，不再因固定数量丢弃仍用于评分的折叠信念。
+既有 boundary 和 proposal 不因数量阻止新的机会；旧快照中的 capacity_blocked 仅保留兼容字段，
+不再参与决策。真实未释放边界、待确认接纳与有效来源仍各按原合同处理。
+
+评分时全 human 同组的两个相同积分只执行一次，混合来源仍分别计算真实不同的输入。每个积分分段
+按原顺序复用已激活来源列表，采样点、乘积顺序和浮点舍入边界保持旧算法；单次积分的最坏阶数
+并未因此改变，实际乘积和数值积分仍随来源及采样点变化。选项唯一最大值由每项重复求 max 改为
+先求一次最大值再判断唯一性，O(q²) 降为 O(q)，并列与 unknown 语义不变。候选本身的有效性由
+同一单项判断复用，完整推进仍需枚举实际候选及其真实失效影响。旧 pin 的数值回放与分段积分
+逐位对照覆盖普通激活、截断窗口和极大时刻舍入；独立非空 proposal 对照不等于线上模型或网关验收。
 
 [三版本回放](evidence/sparse-review-2026-10-22.json)使用原 pin 438f204、仅新队列保持原活跃档、
 完整稀疏实现，同一份合成来源时间线。实际运行 ObservationSession，由合成 observer.evaluate 记录
