@@ -235,6 +235,31 @@ def test_closed_boundary_survives_window_and_silence():
     assert c.state.boundaries
 
 
+def test_released_boundaries_do_not_block_a_new_invitation():
+    c = controller()
+    c.advance(101, controller_epoch=0, host_available=False)
+    for index in range(257):
+        stop = event(f"stop-{index}", at=100 + index / 1000)
+        assert c.observe_committed_event(stop)
+        assert c.apply_semantic_observation(observation(stop, act="ask_yuki_stop"))
+
+    reopening = event("reopening", at=100.5)
+    assert c.observe_committed_event(reopening)
+    assert c.apply_semantic_observation(observation(reopening))
+    assert len(c.state.boundaries) == 257
+    assert all(boundary.released_by == reopening.ref for boundary in c.state.boundaries.values())
+    assert reopening.ref.event_id in c.state.candidates
+
+    c.advance(102, controller_epoch=0, host_available=False)
+    legacy = c.state.model_dump(mode="json")
+    legacy["capacity_blocked"] = True
+    restored = Controller.restore(State.model_validate(legacy), 102)
+    proposal = c.advance(103, controller_epoch=0, host_available=True)
+    assert proposal is not None and proposal.sources == (reopening.ref,)
+    resumed = restored.advance(103, controller_epoch=0, host_available=True)
+    assert resumed is not None and resumed.sources == (reopening.ref,)
+
+
 def test_support_expires_without_self_renewal():
     c = controller()
     e = event()

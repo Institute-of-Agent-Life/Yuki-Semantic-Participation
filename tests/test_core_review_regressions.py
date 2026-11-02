@@ -402,21 +402,28 @@ def test_withdrawing_retired_evidence_clears_unreconstructable_derived_baseline(
     assert c.state.baseline_invalidations == 1
 
 
-def test_baselines_have_an_explicit_sixty_four_unit_capacity():
+def test_replay_preserves_all_consumed_belief_baselines():
     c = controller()
+    first = None
     for index in range(65):
         event = source(str(index), at=100 + index, target=f"person-{index}")
         assert c.observe_committed_event(event)
         assert c.apply_semantic_observation(observation(event, sequence=index + 1))
+        if index == 0:
+            first = c.belief("topic", "person-0", event.at)
+
+    c._set(baseline_evictions=7)  # A loaded historical counter remains an existing fact.
 
     c.advance(1000, controller_epoch=0, host_available=False)
 
-    assert len(c.state.belief_baselines) == 64
-    assert c.state.baseline_evictions == 1
+    assert len(c.state.belief_baselines) == 65
+    assert c.state.baseline_evictions == 7
     assert c.belief("topic", "person-64", 1000)[1] > 0
-    assert c.belief("topic", "person-0", 1000) == dynamics.IDLE
+    assert first is not None
+    assert c.belief("topic", "person-0", 1000)[1] > 0
+    assert c.belief("topic", "person-0", 1000) == pytest.approx(dynamics.decay(first, 900))
     c.advance(1001, controller_epoch=0, host_available=False)
-    assert c.state.baseline_evictions == 1
+    assert c.state.baseline_evictions == 7
 
 
 def test_restore_does_not_mutate_the_supplied_snapshot_during_compaction():

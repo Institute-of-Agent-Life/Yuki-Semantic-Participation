@@ -219,26 +219,81 @@ def test_arbitrary_seen_fingerprint_is_not_a_live_source_or_unit_establishment()
     assert not c.state.candidates
 
 
-def test_fingerprint_resource_pressure_retires_derived_units_before_rejecting_new_input():
-    c, _, _ = admitted()
-    for index in range(64):
-        now = 1000 + index * 700
-        tick(c, now)
-        sources = [event(f"basis-{index}-{i}", at=now + i) for i in range(16)]
-        for source in sources:
-            assert c.observe_committed_event(source)
-        actual = binding(sources[-1], thread=f"topic-{index}", basis=tuple(s.ref for s in sources))
-        assert c.observe_unit_input(actual, sources[-1].ref)
-    tick(c, now + 700)
+def test_current_relation_survives_more_than_1024_referenced_sources(tmp_path):
+    c, origin, established = admitted()
+    assert c.observe_unit_hint(established, report("stay", at=origin.at))
+    effect = Effect(effect_id="original-message", kind="message", at=origin.at)
+    assert c.observe_unit_expression(established, "original-run", effect)
+    first = None
+    for index in range(1, 1024):
+        current = event(f"continuation-{index}", at=100 + index / 100)
+        assert c.observe_committed_event(current)
+        actual = established.model_copy(update={"basis": (origin.ref, current.ref)})
+        assert c.observe_unit_input(actual, current.ref, continuation=True)
+        first = first or current
+
     assert len(c.state.seen) == 1024
-    fresh = event("new-actual-source", at=now + 701)
+    fresh = event("next-continuation", at=111)
     assert c.observe_committed_event(fresh)
-    assert len(c.state.seen) <= 1024
-    assert len(c.participating_units(fresh.at)) == 63
-    assert not c.state.capacity_blocked
-    oldest = SourceRef(event_id="basis-0-0", revision=1)
-    assert not c._valid(oldest)
-    assert oldest.event_id not in c.state.seen
+    assert c.participation_view(fresh, fresh.at).matched_unit is not None
+    actual = established.model_copy(update={"basis": (origin.ref, fresh.ref)})
+    assert c.observe_unit_input(actual, fresh.ref, continuation=True)
+    assert first is not None
+    c.observe_source_change(first.ref)
+    assert not c.observe_unit_hint(
+        established.model_copy(update={"basis": (origin.ref, first.ref)}),
+        report("quiet", at=fresh.at),
+    )
+
+    store = SnapshotStore(tmp_path / "many-sources.sqlite3")
+    try:
+        store.save(c.state, expected_revision=0)
+        _, state = store.load(SCOPE)
+    finally:
+        store.close()
+    restored = Controller.restore(state, fresh.at)
+    unit = restored._participation_checkpoint().units[restored._unit_key("topic", "A")]
+    assert first.ref in unit.continuation_refs
+    assert not restored._unit_ref_valid(first.ref, unit)
+    assert restored.state.effects[effect.effect_id].effect == effect
+    after = event("after-reopen", at=112)
+    assert restored.observe_committed_event(after)
+    assert restored.participation_view(after, after.at).matched_unit is not None
+
+
+def test_current_relations_and_effects_survive_more_than_64_units(tmp_path):
+    c = Controller(SCOPE, 100)
+    for index in range(65):
+        person = f"person-{index}"
+        source = event(f"source-{index}", at=100 + index / 100).model_copy(
+            update={"thread": f"topic-{index}", "author": person, "target": person}
+        )
+        assert c.observe_committed_event(source)
+        actual = binding(source)
+        assert c.observe_unit_input(actual, source.ref)
+        assert c.observe_unit_expression(
+            actual,
+            f"run-{index}",
+            Effect(effect_id=f"message-{index}", kind="message", at=source.at),
+        )
+    assert len(c.participating_units(101)) == 65
+    tick(c, 1000)
+
+    store = SnapshotStore(tmp_path / "many-units.sqlite3")
+    try:
+        store.save(c.state, expected_revision=0)
+        _, state = store.load(SCOPE)
+    finally:
+        store.close()
+    restored = Controller.restore(state, 1000)
+    assert len(restored.participating_units(1000)) == 65
+    assert restored.state.effects["message-0"].effect.kind == "message"
+    fresh = event("next-for-oldest", at=1001).model_copy(
+        update={"thread": "topic-0", "author": "person-0", "target": "person-0"}
+    )
+    assert restored.observe_committed_event(fresh)
+    matched = restored.participation_view(fresh, fresh.at).matched_unit
+    assert matched is not None and matched.unit.thread == "topic-0" and matched.expressed
 
 
 def different_unit_review(c, source):

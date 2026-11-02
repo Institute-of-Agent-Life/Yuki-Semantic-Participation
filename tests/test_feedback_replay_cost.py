@@ -123,7 +123,7 @@ def test_recent_self_report_remains_eligible_without_historical_brake_replay():
     assert controller.state.engagement_report == self_report
 
 
-def test_accepted_feedback_without_final_checkpoint_retires_and_releases_capacity():
+def test_accepted_feedback_without_final_checkpoint_retires():
     controller = Controller(SCOPE, 100)
     for index in range(257):
         proposal = Proposal(
@@ -149,7 +149,6 @@ def test_accepted_feedback_without_final_checkpoint_retires_and_releases_capacit
             )
         )
     controller.advance(101, controller_epoch=0, host_available=False)
-    assert controller.state.capacity_blocked
     # A historical snapshot can still have the already-accepted proposal pending.
     controller._set(pending="accepted-0")
     controller.advance(1000, controller_epoch=0, host_available=False)
@@ -158,4 +157,3 @@ def test_accepted_feedback_without_final_checkpoint_retires_and_releases_capacit
     assert not controller.state.proposal_runs
     assert not controller.state.effects
     assert controller.state.pending is None
-    assert not controller.state.capacity_blocked

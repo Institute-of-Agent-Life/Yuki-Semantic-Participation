@@ -7,7 +7,7 @@ import json
 import math
 from collections.abc import Callable, Collection, Iterable
 from dataclasses import dataclass
-from typing import Any, Literal, TypeGuard
+from typing import Any, Literal, TypeGuard, cast
 from uuid import uuid4
 
 from pydantic import Field, model_validator
@@ -487,16 +487,15 @@ class _FamilyIndex:
         self,
         key: str,
         previous: UnitState | None,
-        value: UnitState | None,
+        value: UnitState,
         appended: SourceRef | None = None,
     ) -> None:
         continuation = self.continuations.get(key)
         if continuation is not None:
-            if value is not None and continuation.refs is value.continuation_refs:
+            if continuation.refs is value.continuation_refs:
                 pass  # The immutable authoritative sequence is unchanged.
             elif (
-                value is not None
-                and previous is not None
+                previous is not None
                 and continuation.refs is previous.continuation_refs
                 and appended is not None
             ):
@@ -505,9 +504,6 @@ class _FamilyIndex:
                 self.continuations.pop(key)
         if previous is not None:
             self._discard(self.units, previous.binding.unit.target, key)
-        if value is None:
-            self.unit_order.pop(key, None)
-            return
         order = self.unit_order.get(key)
         if order is None:
             order = self.next_unit
@@ -658,6 +654,20 @@ class Controller:
         """Apply a Host-owned fact at the original state mutation boundary."""
         self._put(name, key, value)
 
+    def set_host_mapping_entry(self, namespace: str, key: str, value: Any) -> None:
+        """Update one fact in a Host-owned mapping without copying unrelated entries."""
+        host = self.state.host_checkpoint
+        if namespace not in host:
+            self._put("host_checkpoint", namespace, {key: value})
+            return
+        mapping = cast(dict[str, Any], host[namespace])
+        if key not in mapping or not _same_fact(mapping[key], value):
+            self._invalidate_retirement_index("host_checkpoint", namespace)
+            mapping[key] = value
+            self.body_changed = True
+            if namespace == CHECKPOINT_KEY:
+                self._family_index.reset_checkpoint(self._read_participation_checkpoint())
+
     def remove_state_entry(self, name: str, key: str) -> None:
         self._pop(name, key, None)
 
@@ -709,10 +719,6 @@ class Controller:
                     seen.model_copy(update={"source_order": event.source_order}),
                 )
             return False
-        if seen is None and len(self.state.seen) >= 1024:
-            self._make_participation_source_room()
-            if len(self.state.seen) >= 1024:
-                return False
         if old and old.ref.revision >= event.ref.revision:
             return False
         if event.ref.revision <= self.state.invalidated.get(event.ref.event_id, 0):
@@ -736,8 +742,6 @@ class Controller:
         self, invalid: SourceRef, *, actor_identity: ActorIdentity = original_actor
     ) -> None:
         key = invalid.event_id
-        if key not in self.state.seen and len(self.state.seen) >= 1024:
-            raise ValueError("source_tombstone_capacity")
         old_seen = self.state.seen.get(key)
         if self.state.belief_baselines and (
             old_seen is None
@@ -1177,10 +1181,6 @@ class Controller:
         checkpoint.units[key] = unit
         self._family_index.put_unit(key, previous, unit, appended)
 
-    def _pop_participation_unit(self, checkpoint: ParticipationCheckpoint, key: str) -> None:
-        previous = checkpoint.units.pop(key)
-        self._family_index.put_unit(key, previous, None)
-
     def _put_participation_expression(
         self, checkpoint: ParticipationCheckpoint, key: str, expression: ExpressionBinding
     ) -> None:
@@ -1270,7 +1270,8 @@ class Controller:
         )
         if changed:
             self._save_participation(checkpoint)
-        self._prune_participation(checkpoint)
+        if changed or self._retirement_index is None:
+            self._prune_participation(checkpoint)
         return True
 
     def observe_unit_expression(
@@ -1330,7 +1331,7 @@ class Controller:
         unit = checkpoint.units.get(key)
         if unit is None or not self._bound_to_unit(binding, unit):
             # A late transport receipt remains factual, but cannot re-establish a
-            # unit retired by a real interpretation change or resource eviction.
+            # unit retired by a real interpretation change or source invalidation.
             self._save_participation(checkpoint)
             return True
         anchors = tuple(
@@ -1453,10 +1454,6 @@ class Controller:
             for k, v in checkpoint.units.items()
             if self._binding_valid(v.binding, checkpoint) and self._unit_interpretation_valid(v)
         }
-        # Use the existing bounded discussion resource policy, not a conversation expiry rule.
-        if len(units) > 64:
-            ordered = sorted(units, key=lambda k: (-units[k].last_at, k))
-            units = {k: units[k] for k in ordered[:64]}
         updated = checkpoint.model_copy(update={"units": units, "expressions": expressions})
         if CHECKPOINT_KEY in self.state.host_checkpoint and (
             normalize or updated != (previous if previous is not None else checkpoint)
@@ -1525,20 +1522,7 @@ class Controller:
             )
             units[key] = unit.model_copy(update={"anchors": anchors, "retired_refs": retired})
         ordered = sorted(units, key=lambda k: (-units[k].last_at, k))
-        return checkpoint.model_copy(update={"units": {k: units[k] for k in ordered[:64]}})
-
-    def _make_participation_source_room(self) -> None:
-        # Retire derived units under the existing fingerprint resource bound. Never
-        # revive raw sources or block an execution merely to retain a relationship.
-        self._prune()
-        while len(self.state.seen) >= 1024:
-            checkpoint = self._read_participation_checkpoint()
-            if checkpoint is None or not checkpoint.units:
-                return
-            oldest = min(checkpoint.units, key=lambda k: (checkpoint.units[k].last_at, k))
-            self._pop_participation_unit(checkpoint, oldest)
-            self._save_participation(checkpoint)
-            self._prune()
+        return checkpoint.model_copy(update={"units": {k: units[k] for k in ordered}})
 
     def participation_actor_ids(self) -> frozenset[str]:
         """Original actors/targets for Host identity lookup, without deriving eligibility."""
@@ -1679,6 +1663,38 @@ class Controller:
         """Read existing ordinary and SELF units; never queue, consume, or advance."""
         checkpoint = self._participation_checkpoint()
         return self._current_units(now, checkpoint, actor_identity)
+
+    def participation_own_basis(self, thread: str, actor: str, now: float) -> tuple[SourceRef, ...]:
+        """Read the original actor's first coalesced basis for an ordinary input."""
+        if actor == "SELF":
+            return next(
+                (
+                    unit.binding.basis
+                    for unit in self.participating_units(now)
+                    if unit.unit.thread == thread
+                    and unit.unit.target == actor
+                    and unit.binding.actor == actor
+                ),
+                (),
+            )
+        checkpoint = self._participation_checkpoint()
+        index = self._family_index
+        first: UnitState | None = None
+        first_rank: tuple[float, int] | None = None
+        for key in index.units.get(actor, ()):
+            unit = checkpoint.units[key]
+            if (
+                unit.binding.unit.thread != thread
+                or unit.binding.actor == "SELF"
+                or not unit.last_at <= now
+                or not self._binding_valid(unit.binding, checkpoint)
+                or not self._unit_interpretation_valid(unit)
+            ):
+                continue
+            rank = (-unit.last_at, index.unit_order[key])
+            if first_rank is None or rank < first_rank:
+                first, first_rank = unit, rank
+        return first.binding.basis if first is not None and first.binding.actor == actor else ()
 
     def _source_before(
         self, left_at: float, left: SourceRef | None, right_at: float, right: SourceRef | None
@@ -2906,8 +2922,6 @@ class Controller:
                     ),
                 )
             )
-        # A resource eviction is explicit and distinct from ordinary time decay.
-        # Discarded units cannot replay retired events and manufacture a new baseline.
         prepared.sort(key=lambda item: (-item[1].last_action, item[0]))
         traces = {
             "compute": TraceBaseline(
@@ -2925,8 +2939,7 @@ class Controller:
             else TraceBaseline(at=boundary, value=self._human_activity(boundary))
         )
         self._set(
-            belief_baselines=dict(prepared[:64]),
-            baseline_evictions=self.state.baseline_evictions + max(0, len(prepared) - 64),
+            belief_baselines=dict(prepared),
             replay_after=boundary,
             trace_baselines=traces,
         )
@@ -3506,7 +3519,7 @@ class Controller:
         elapsed = now - self.state.now
         if elapsed > 5:
             self._set(skipped_seconds=self.state.skipped_seconds + elapsed - 5)
-        can_propose = host_available and not self.state.capacity_blocked and not self.state.pending
+        can_propose = host_available and not self.state.pending
         self._set(now=now)
         self._prune()
         if not can_propose:
@@ -3847,10 +3860,6 @@ class Controller:
         for key, proposal in list(self.state.proposals.items()):
             if proposal.expires_at < cutoff and key not in referenced and key != self.state.pending:
                 self._pop("proposals", key)
-        # Never silently discard unresolved boundary or run identities to make room.
-        self._set(
-            capacity_blocked=len(self.state.boundaries) > 256 or len(self.state.proposals) > 256
-        )
         for key in list(self.state.attentions):
             if key not in self.state.candidates:
                 self._pop("attentions", key)
