@@ -98,6 +98,57 @@ def test_multi_source_attention_uses_bounded_product_stimulus():
     assert 0 <= result <= 1
 
 
+def test_human_group_reuses_identical_attention_calculation(monkeypatch):
+    c = controller()
+    for event in (source("first"), source("second", at=101)):
+        assert c.observe_committed_event(event)
+        assert c.apply_semantic_observation(observation(event, act="open_group"))
+    expected = c.opportunity_scores(106)
+    assert expected
+    original = dynamics.aggregate_attention
+    calls = []
+
+    def counted(sources, now, tau):
+        calls.append(tuple(sources))
+        return original(sources, now, tau)
+
+    monkeypatch.setattr(dynamics, "aggregate_attention", counted)
+    assert c.opportunity_scores(106) == expected
+    assert len(calls) == 1 and len(calls[0]) == 2
+
+
+def test_integral_reuses_active_source_list_within_each_segment(monkeypatch):
+    original = dynamics.stimulus
+    lists = []
+
+    def counted(sources, now, tau):
+        lists.append(sources)
+        return original(sources, now, tau)
+
+    monkeypatch.setattr(dynamics, "stimulus", counted)
+    result = dynamics.aggregate_attention(
+        [(0.6, 100, 100), (0.5, 100, 100.5), (0.3, 100, 101)], 102, 90
+    )
+    assert result > 0 and len(lists) > 3
+    assert len({id(sources) for sources in lists}) == 3
+
+
+@pytest.mark.parametrize(
+    "values,unique", [({"a": 0.6, "b": 0.4}, True), ({"a": 0.5, "b": 0.5}, False)]
+)
+def test_unique_choice_maximum_scans_values_only_twice(values, unique):
+    class Counted(dict):
+        def values(self):
+            self.calls += 1
+            return super().values()
+
+    data = Counted(values)
+    data.calls = 0
+    choice = Choice(choice="a", probabilities=values).model_copy(update={"probabilities": data})
+    assert choice.has_unique_maximum() is unique
+    assert data.calls == 2
+
+
 def test_message_count_does_not_create_extra_autonomous_work():
     c = controller()
     proposal = propose(c, source())

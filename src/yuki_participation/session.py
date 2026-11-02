@@ -179,7 +179,12 @@ class ObservationSession:
         )
 
     def _discard_quiet_reviews(self, now: float, actor_identity: ActorIdentity) -> None:
-        if not self.queue.pending:
+        pending_refs = {
+            pending.event.ref
+            for pending in self.queue.pending.values()
+            if not pending.event.observation_priority
+        }
+        if not pending_refs:
             return
         checkpoint = self.controller._participation_checkpoint()
         quiet = {
@@ -192,14 +197,20 @@ class ObservationSession:
         admitted: dict[SourceRef, set[tuple[str, str]]] = {}
         hints: dict[tuple[str, str], list[tuple[float, SourceRef | None]]] = {}
         observed: dict[tuple[str, str], set[SourceRef]] = {}
-        for unit in checkpoint.units.values():
+        for key, unit in checkpoint.units.items():
             identity = (unit.binding.unit.thread, actor_identity(unit.binding.unit.target))
             if identity not in quiet or not self.controller._binding_valid(
                 unit.binding, checkpoint
             ):
                 continue
-            for ref in unit.continuation_refs:
-                admitted.setdefault(ref, set()).add(identity)
+            if len(pending_refs) <= len(unit.continuation_refs):
+                for ref in pending_refs:
+                    if self.controller._continuation_position(key, unit, ref) is not None:
+                        admitted.setdefault(ref, set()).add(identity)
+            else:
+                for ref in unit.continuation_refs:
+                    if ref in pending_refs:
+                        admitted.setdefault(ref, set()).add(identity)
             hint = unit.hint
             if (
                 hint is not None

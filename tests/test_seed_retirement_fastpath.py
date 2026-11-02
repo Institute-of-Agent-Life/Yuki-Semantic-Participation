@@ -107,10 +107,7 @@ def test_continuation_has_no_review_quota_across_hydration_and_cold_restore():
         b.ref,
         d.ref,
     )
-    assert (
-        c.state.host_checkpoint[CHECKPOINT_KEY]["units"][c._unit_key("topic", "A")]["input_ref"]
-        == d.ref.model_dump()
-    )
+    assert c._participation_checkpoint().units[c._unit_key("topic", "A")].input_ref == d.ref
     next_source, next_binding = input_for(c, original, "next", 3, admit=False)
     assert c.participation_view(next_source, 103).needs_observation
     assert c.continuation_current(next_source.ref, next_binding, 103)

@@ -1,4 +1,4 @@
-"""Real SQLite progress/body commits retain the old mathematical State and capacity."""
+"""Real SQLite progress/body commits retain the mathematical State and CAS."""
 
 import json
 import sqlite3
@@ -19,7 +19,7 @@ def controller():
     return c
 
 
-def test_all_38_fields_and_hot_capacity_tokens(tmp_path, monkeypatch):
+def test_all_38_fields_and_hot_saves(tmp_path, monkeypatch):
     c = controller()
     c._set(host_checkpoint={"extension": {"padding": "资料" * 20000}})
     store = SnapshotStore(tmp_path / "state.db")
@@ -34,7 +34,6 @@ def test_all_38_fields_and_hot_capacity_tokens(tmp_path, monkeypatch):
     for number, value in enumerate((0, -0.0, 1e-6, 1e20), start=1):
         c.advance(1000 + number * 2, controller_epoch=0, host_available=False)
         c._set(skipped_seconds=value, sample_sequence=2**90 + number)
-        length = len(c.state.model_dump_json().encode())
         with monkeypatch.context() as m:
             m.setattr(
                 State, "model_dump_json", lambda *_a, **_k: pytest.fail("hot save encoded body")
@@ -42,10 +41,6 @@ def test_all_38_fields_and_hot_capacity_tokens(tmp_path, monkeypatch):
             current = freeze(c.state, body_changed=c.take_changes()[1], saved_layout=first.layout)
         assert current.body is None
         revision = store.save_frozen(current, expected_revision=revision)
-        assert (
-            store.connection.execute("SELECT logical_bytes FROM snapshot_head").fetchone()[0]
-            == length
-        )
         assert store.load(SCOPE)[1].model_dump_json() == c.state.model_dump_json()
         assert (
             store.connection.execute("SELECT body FROM snapshot_body").fetchone()[0]
@@ -66,6 +61,16 @@ def test_layout_order_and_optional_shape_require_full_save():
     assert list(thaw(SCOPE, result.progress, result.body).belief_baselines) == ["b", "a"]
 
 
+def test_cold_freeze_does_not_encode_a_second_complete_state(monkeypatch):
+    c = controller()
+    monkeypatch.setattr(
+        State, "model_dump_json", lambda *_a, **_k: pytest.fail("encoded full state twice")
+    )
+    value = freeze(c.state)
+    assert value.body is not None
+    assert thaw(SCOPE, value.progress, value.body) == c.state
+
+
 @pytest.mark.parametrize("side", ["snapshot_head", "snapshot_body"])
 def test_missing_half_is_not_an_empty_controller(tmp_path, side):
     store = SnapshotStore(tmp_path / "state.db")
@@ -77,17 +82,15 @@ def test_missing_half_is_not_an_empty_controller(tmp_path, side):
     store.close()
 
 
-def test_cas_and_global_capacity_include_other_generation(tmp_path):
+def test_cas_and_other_generation_are_independent(tmp_path):
     c = controller()
-    length = len(c.state.model_dump_json().encode())
-    store = SnapshotStore(tmp_path / "state.db", total_bytes=length * 2 - 1)
+    store = SnapshotStore(tmp_path / "state.db")
     assert store.save(c.state, expected_revision=0) == 1
     with pytest.raises(SnapshotConflict):
         store.save(c.state, expected_revision=0)
     other = c.state.model_copy(update={"scope": SCOPE.model_copy(update={"generation": 5})})
-    with pytest.raises(ValueError, match="global_snapshot_capacity"):
-        store.save(other, expected_revision=0)
-    assert store.load(SCOPE)[0] == 1 and store.load(other.scope) is None
+    assert store.save(other, expected_revision=0) == 1
+    assert store.load(SCOPE)[0] == 1 and store.load(other.scope)[0] == 1
     store.close()
 
 
@@ -105,10 +108,93 @@ def legacy_file(path, state):
     return len(payload.encode())
 
 
-def test_migration_is_format_only_preserves_revision_and_original_size(tmp_path, monkeypatch):
+def legacy_pair_file(path, state, *, missing=None):
+    value = freeze(state)
+    with sqlite3.connect(path) as db:
+        db.execute(
+            "CREATE TABLE snapshot_head(scope TEXT NOT NULL,generation INTEGER NOT NULL,"
+            "revision INTEGER NOT NULL,progress BLOB NOT NULL,"
+            "logical_bytes INTEGER NOT NULL,PRIMARY KEY(scope,generation))"
+        )
+        db.execute(
+            "CREATE TABLE snapshot_body(scope TEXT NOT NULL,generation INTEGER NOT NULL,"
+            "body BLOB NOT NULL,logical_size_delta INTEGER NOT NULL,"
+            "PRIMARY KEY(scope,generation))"
+        )
+        if missing != "head":
+            db.execute(
+                "INSERT INTO snapshot_head VALUES(?,?,?,?,?)",
+                (SCOPE.conversation_id, SCOPE.generation, 17, value.progress, 42),
+            )
+        if missing != "body":
+            db.execute(
+                "INSERT INTO snapshot_body VALUES(?,?,?,?)",
+                (SCOPE.conversation_id, SCOPE.generation, value.body, -11),
+            )
+    return value
+
+
+def test_legacy_pair_migrates_atomically_without_rewriting_payload(tmp_path):
+    c = controller()
+    path = tmp_path / "old_pair.db"
+    before = legacy_pair_file(path, c.state)
+    store = SnapshotStore(path)
+    assert store.load_raw(SCOPE) == (17, before.progress, before.body)
+    assert store.load(SCOPE)[1] == c.state
+    assert [row[1] for row in store.connection.execute("PRAGMA table_info(snapshot_head)")] == [
+        "scope",
+        "generation",
+        "revision",
+        "progress",
+    ]
+    assert [row[1] for row in store.connection.execute("PRAGMA table_info(snapshot_body)")] == [
+        "scope",
+        "generation",
+        "body",
+    ]
+    assert store.save(c.state, expected_revision=17) == 18
+    store.close()
+
+
+@pytest.mark.parametrize("missing", ["head", "body"])
+def test_legacy_pair_migration_preserves_local_missing_side(tmp_path, missing):
+    path = tmp_path / "broken_pair.db"
+    legacy_pair_file(path, controller().state, missing=missing)
+    store = SnapshotStore(path)
+    with pytest.raises(ValueError, match="snapshot_storage_pair"):
+        store.load(SCOPE)
+    other_scope = SCOPE.model_copy(update={"generation": 5})
+    other = controller().state.model_copy(update={"scope": other_scope})
+    assert store.save(other, expected_revision=0) == 1
+    assert store.load(other_scope)[1] == other
+    assert store.connection.execute("SELECT count(*) FROM snapshot_" + missing).fetchone()[0] == 1
+    store.close()
+
+
+def test_legacy_pair_ddl_failure_rolls_back_both_tables(tmp_path):
+    path = tmp_path / "old_pair.db"
+    before = legacy_pair_file(path, controller().state)
+
+    class InterruptedStore(SnapshotStore):
+        def _create(self):
+            super()._create()
+            raise RuntimeError("interrupted upgrade")
+
+    with pytest.raises(RuntimeError, match="interrupted"):
+        InterruptedStore(path)
+    with sqlite3.connect(path) as db:
+        assert db.execute("SELECT revision,progress FROM snapshot_head").fetchone() == (
+            17,
+            before.progress,
+        )
+        assert db.execute("SELECT body FROM snapshot_body").fetchone() == (before.body,)
+        assert "logical_bytes" in [r[1] for r in db.execute("PRAGMA table_info(snapshot_head)")]
+
+
+def test_migration_is_format_only_preserves_revision(tmp_path, monkeypatch):
     c = controller()
     path = tmp_path / "old.db"
-    old_size = legacy_file(path, c.state)
+    legacy_file(path, c.state)
     for method in ("restore", "advance", "_prune"):
         monkeypatch.setattr(
             Controller, method, lambda *_a, **_k: pytest.fail("migration ran controller")
@@ -116,17 +202,10 @@ def test_migration_is_format_only_preserves_revision_and_original_size(tmp_path,
     store = SnapshotStore(path)
     revision, state = store.load(SCOPE)
     assert revision == 17 and state.model_dump_json() == c.state.model_dump_json()
-    assert (
-        store.connection.execute("SELECT logical_bytes FROM snapshot_head").fetchone()[0]
-        == old_size
-    )
     assert not store.connection.execute(
         "SELECT 1 FROM sqlite_master WHERE name='snapshots'"
     ).fetchall()
     assert store.save(state, expected_revision=17) == 18
-    assert store.connection.execute("SELECT logical_bytes FROM snapshot_head").fetchone()[0] == len(
-        state.model_dump_json().encode()
-    )
     store.close()
 
 

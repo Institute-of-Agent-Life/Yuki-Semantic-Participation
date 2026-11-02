@@ -9,7 +9,7 @@ from uuid import UUID
 
 from tests.test_controller import SCOPE, event, observation
 from yuki_participation import controller as current
-from yuki_participation import models, self_report
+from yuki_participation import dynamics, models, self_report
 from yuki_participation.snapshot import freeze, thaw
 
 PIN = "79d266918dc6ce19b7d81568565deaed450301d5"
@@ -152,6 +152,20 @@ def test_original_ticks_hash_stream_restore_and_every_frozen_field(tmp_path, mon
     verify()
     for moment in (2000, 2002, 2004, 2012, 2400):
         apply("advance", moment, controller_epoch=0, host_available=True, intrinsic_allowed=True)
+
+
+def test_segment_attention_matches_old_pin_including_float_boundary_rounding(tmp_path):
+    old_package(tmp_path)
+    old = importlib.import_module("participation_oracle.dynamics")
+    cases = [
+        ([(0.6, 100, 100), (0.5, 100, 100.5), (0.3, 100, 101)], 102),
+        ([(0.9, 1, 1), (0.2, 50, 90), (0.4, 300, 300)], 200),
+        ([(0.6, 1e16, 1e16), (0.5, 1e16, 1e16 + 2)], 1e16 + 10),
+    ]
+    for sources, now in cases:
+        assert dynamics.aggregate_attention(sources, now, 90).hex() == (
+            old.aggregate_attention(sources, now, 90).hex()
+        )
 
 
 def test_readiness_never_consumes_and_backoff_still_cleans_quiet_and_expiry():

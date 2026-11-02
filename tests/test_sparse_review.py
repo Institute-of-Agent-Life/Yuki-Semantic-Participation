@@ -106,6 +106,23 @@ async def test_quiet_clears_only_covered_admitted_review_and_preserves_new_invit
     assert list(session.queue.pending) == [invite.ref.event_id]
 
 
+def test_quiet_matches_short_continuation_history_against_larger_pending_set(monkeypatch):
+    c, _, original = established()
+    covered, current = input_for(c, original, "covered", 1)
+    session = ObservationSession(c, None)
+    session.queue.offer(covered)
+    others = [event(f"unadmitted-{number}", at=102 + number) for number in range(5)]
+    for source in others:
+        assert c.observe_committed_event(source)
+        session.queue.offer(source)
+    assert c.observe_unit_hint(current, report("quiet", at=102, response="done"))
+    monkeypatch.setattr(
+        c, "_continuation_position", lambda *_a: pytest.fail("scanned all pending for short refs")
+    )
+    session._discard_quiet_reviews(110, lambda actor: actor)
+    assert set(session.queue.pending) == {source.ref.event_id for source in others}
+
+
 @pytest.mark.asyncio
 async def test_quiet_does_not_clear_unadmitted_focus_even_if_older():
     c, _, original = established()

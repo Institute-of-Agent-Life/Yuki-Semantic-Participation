@@ -42,7 +42,6 @@ class SnapshotWrite:
     scope: Scope
     progress: bytes
     body: bytes | None
-    logical_size_delta: int | None
     layout: Layout
 
 
@@ -79,7 +78,6 @@ def freeze(
     layout = layout_of(state)
     progress = progress_of(state).model_dump_json().encode("utf-8")
     body = None
-    delta = None
     if body_changed or layout != saved_layout:
         body = (
             Body(
@@ -90,8 +88,7 @@ def freeze(
             .model_dump_json()
             .encode("utf-8")
         )
-        delta = len(state.model_dump_json().encode("utf-8")) - len(progress)
-    return SnapshotWrite(state.scope, progress, body, delta, layout)
+    return SnapshotWrite(state.scope, progress, body, layout)
 
 
 def assemble(progress_bytes: bytes | str, body_bytes: bytes | str) -> dict[str, Any]:
